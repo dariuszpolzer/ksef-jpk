@@ -49,7 +49,10 @@ Desktop.ini
 # Ignore merge conflict backups
 *.orig
 
+# Blokada danych wrażliwych
 *.xml
+
+# Katalogi danych (nie powinny trafić do repo)
 test_data/
 prod_data/
 old_test_data/
