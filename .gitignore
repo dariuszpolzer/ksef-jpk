@@ -48,3 +48,8 @@ Desktop.ini
 # --- Git ---
 # Ignore merge conflict backups
 *.orig
+
+*.xml
+test_data/
+prod_data/
+old_test_data/
