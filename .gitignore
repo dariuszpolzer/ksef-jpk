@@ -1,0 +1,50 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+env/
+.venv/
+.env/
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+*.egg
+
+# PyInstaller
+*.spec
+
+# Logs
+*.log
+
+# Jupyter
+.ipynb_checkpoints/
+
+# --- Windows ---
+Thumbs.db
+Desktop.ini
+
+# --- Editors ---
+# VSCode
+.vscode/
+
+# PyCharm / IntelliJ
+.idea/
+
+# --- System / temp ---
+*.tmp
+*.temp
+*.bak
+
+# --- XML / XSD ---
+# (same files are kept, but temporary or generated ones ignored)
+*~.xml
+*~.xsd
+
+# --- Git ---
+# Ignore merge conflict backups
+*.orig
