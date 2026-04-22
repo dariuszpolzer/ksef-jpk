@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<JPK xmlns="http://crd.gov.pl/wzor/2025/12/19/14090/" xmlns:etd="http://crd.gov.pl/xml/schematy/dziedzinowe/mf/2022/09/13/eD/DefinicjeTypy/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://crd.gov.pl/wzor/2025/12/19/14090/ http://crd.gov.pl/wzor/2025/12/19/14090/schemat.xsd">
+  <Naglowek>
+    <KodFormularza kodSystemowy="JPK_V7M (3)" wersjaSchemy="1-0E">JPK_VAT</KodFormularza>
+    <WariantFormularza>3</WariantFormularza>
+    <DataWytworzeniaJPK>2026-04-17T12:26:11</DataWytworzeniaJPK>
+    <CelZlozenia poz="P_7">1</CelZlozenia>
+    <KodUrzedu>1210</KodUrzedu>
+    <Rok>2026</Rok>
+    <Miesiac>04</Miesiac>
+  </Naglowek>
+  <Podmiot1 rola="Podatnik">
+    <OsobaFizyczna>
+      <etd:NIP>6791444505</etd:NIP>
+      <etd:ImiePierwsze>DARIUSZ</etd:ImiePierwsze>
+      <etd:Nazwisko>POLZER</etd:Nazwisko>
+      <etd:DataUrodzenia>1957-12-06</etd:DataUrodzenia>
+      <Email>dpolzer@post.pl</Email>
+      <Telefon>509467620</Telefon>
+    </OsobaFizyczna>
+  </Podmiot1>
+  <Deklaracja>
+    <Naglowek>
+      <KodFormularzaDekl kodSystemowy="VAT-7 (23)" kodPodatku="VAT" rodzajZobowiazania="Z" wersjaSchemy="1-0E">VAT-7</KodFormularzaDekl>
+      <WariantFormularzaDekl>23</WariantFormularzaDekl>
+    </Naglowek>
+    <PozycjeSzczegolowe>
+      <P_19>19252</P_19>
+      <P_20>4428</P_20>
+      <P_38>0</P_38>
+      <P_42>243</P_42>
+      <P_43>56</P_43>
+      <P_51>0</P_51>
+    </PozycjeSzczegolowe>
+    <Pouczenia>1</Pouczenia>
+  </Deklaracja>
+  <Ewidencja>
+    <SprzedazWiersz>
+      <LpSprzedazy>1</LpSprzedazy>
+      <KodKrajuNadaniaTIN>PL</KodKrajuNadaniaTIN>
+      <NrKontrahenta>9452174513</NrKontrahenta>
+      <NazwaKontrahenta>POL-INOWEX sp. z o.o.</NazwaKontrahenta>
+      <DowodSprzedazy>4</DowodSprzedazy>
+      <DataWystawienia>2026-04-01</DataWystawienia>
+      <DataSprzedazy>2026-04-01</DataSprzedazy>
+      <NrKSeF>6791444505-20260401-755BEE800001-B8</NrKSeF>
+      <K_19>19252.07</K_19>
+      <K_20>4427.98</K_20>
+    </SprzedazWiersz>
+    <SprzedazCtrl>
+      <LiczbaWierszySprzedazy>1</LiczbaWierszySprzedazy>
+      <PodatekNalezny>4427.98</PodatekNalezny>
+    </SprzedazCtrl>
+    <ZakupWiersz>
+      <LpZakupu>1</LpZakupu>
+      <KodKrajuNadaniaTIN>PL</KodKrajuNadaniaTIN>
+      <NrDostawcy>5261040567</NrDostawcy>
+      <NazwaDostawcy>T-Mobile Polska S.A.</NazwaDostawcy>
+      <DowodZakupu>512641670426</DowodZakupu>
+      <DataZakupu>2026-04-13</DataZakupu>
+      <DataWplywu>2026-04-13</DataWplywu>
+      <NrKSeF>5261040567-20260413-4A1A53800042-54</NrKSeF>
+      <K_42>77.1</K_42>
+      <K_43>17.73</K_43>
+    </ZakupWiersz>
+    <ZakupWiersz>
+      <LpZakupu>2</LpZakupu>
+      <KodKrajuNadaniaTIN>PL</KodKrajuNadaniaTIN>
+      <NrDostawcy>5270005984</NrDostawcy>
+      <NazwaDostawcy>EURO-NET sp. z o.o.</NazwaDostawcy>
+      <DowodZakupu>C2/FAV/2026/0000932</DowodZakupu>
+      <DataZakupu>2026-04-03</DataZakupu>
+      <DataWplywu>2026-04-03</DataWplywu>
+      <NrKSeF>5270005984-20260403-4B04D200000B-4D</NrKSeF>
+      <K_42>56.9</K_42>
+      <K_43>13.09</K_43>
+    </ZakupWiersz>
+    <ZakupWiersz>
+      <LpZakupu>3</LpZakupu>
+      <KodKrajuNadaniaTIN>PL</KodKrajuNadaniaTIN>
+      <NrDostawcy>9512120077</NrDostawcy>
+      <NazwaDostawcy>P4 sp. z o.o.</NazwaDostawcy>
+      <DowodZakupu>000158361126/OPR/04/2026</DowodZakupu>
+      <DataZakupu>2026-04-07</DataZakupu>
+      <DataWplywu>2026-04-07</DataWplywu>
+      <NrKSeF>9512120077-20260407-89F2528000D4-47</NrKSeF>
+      <K_42>108.96</K_42>
+      <K_43>25.06</K_43>
+    </ZakupWiersz>
+    <ZakupCtrl>
+      <LiczbaWierszyZakupow>3</LiczbaWierszyZakupow>
+      <PodatekNaliczony>55.88</PodatekNaliczony>
+    </ZakupCtrl>
+  </Ewidencja>
+</JPK>

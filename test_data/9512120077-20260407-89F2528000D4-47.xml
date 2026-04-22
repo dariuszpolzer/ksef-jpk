@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Faktura xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://crd.gov.pl/wzor/2025/06/25/13775/">
+  <Naglowek>
+    <KodFormularza kodSystemowy="FA (3)" wersjaSchemy="1-0E">FA</KodFormularza>
+    <WariantFormularza>3</WariantFormularza>
+    <DataWytworzeniaFa>2026-04-07T12:07:11.5835992+02:00</DataWytworzeniaFa>
+    <SystemInfo>WIZARD</SystemInfo>
+  </Naglowek>
+  <Podmiot1>
+    <DaneIdentyfikacyjne>
+      <NIP>9512120077</NIP>
+      <Nazwa>P4 sp. z o.o.</Nazwa>
+    </DaneIdentyfikacyjne>
+    <Adres>
+      <KodKraju>PL</KodKraju>
+      <AdresL1>ul. Wynalazek 1</AdresL1>
+      <AdresL2>02-677 Warszawa</AdresL2>
+    </Adres>
+  </Podmiot1>
+  <Podmiot2>
+    <DaneIdentyfikacyjne>
+      <NIP>6791444505</NIP>
+      <Nazwa>DARIUSZ POLZER</Nazwa>
+    </DaneIdentyfikacyjne>
+    <Adres>
+      <KodKraju>PL</KodKraju>
+      <AdresL1>ULICA KURCZABA JANA 33-108</AdresL1>
+      <AdresL2>30-868 KRAKÓW</AdresL2>
+    </Adres>
+    <NrKlienta>4094531</NrKlienta>
+    <JST>2</JST>
+    <GV>2</GV>
+  </Podmiot2>
+  <Fa>
+    <KodWaluty>PLN</KodWaluty>
+    <P_1>2026-04-07</P_1>
+    <P_2>000158361126/OPR/04/2026</P_2>
+    <OkresFa>
+      <P_6_Od>2026-04-01</P_6_Od>
+      <P_6_Do>2026-04-30</P_6_Do>
+    </OkresFa>
+    <P_13_1>108.96</P_13_1>
+    <P_14_1>25.06</P_14_1>
+    <P_15>134.02</P_15>
+    <Adnotacje>
+      <P_16>2</P_16>
+      <P_17>2</P_17>
+      <P_18>2</P_18>
+      <P_18A>2</P_18A>
+      <Zwolnienie>
+        <P_19N>1</P_19N>
+      </Zwolnienie>
+      <NoweSrodkiTransportu>
+        <P_22N>1</P_22N>
+      </NoweSrodkiTransportu>
+      <P_23>2</P_23>
+      <PMarzy>
+        <P_PMarzyN>1</P_PMarzyN>
+      </PMarzy>
+    </Adnotacje>
+    <RodzajFaktury>VAT</RodzajFaktury>
+    <FaWiersz>
+      <NrWierszaFa>1</NrWierszaFa>
+      <P_7>Ochrona Internetu dla 5 systemów za okres od 2026-04-01 do 2026-04-30</P_7>
+      <P_8A>szt.</P_8A>
+      <P_8B>1</P_8B>
+      <P_9A>15.00</P_9A>
+      <P_11>15.00</P_11>
+      <P_11Vat>3.45</P_11Vat>
+      <P_12>23</P_12>
+    </FaWiersz>
+    <FaWiersz>
+      <NrWierszaFa>2</NrWierszaFa>
+      <P_7>Internet światłowodowy do 150 Mb/s za okres od 2026-04-01 do 2026-04-30</P_7>
+      <P_8A>szt.</P_8A>
+      <P_8B>1</P_8B>
+      <P_9A>78.96</P_9A>
+      <P_11>78.96</P_11>
+      <P_11Vat>18.16</P_11Vat>
+      <P_12>23</P_12>
+    </FaWiersz>
+    <FaWiersz>
+      <NrWierszaFa>3</NrWierszaFa>
+      <P_7>WiFi za okres od 2026-04-01 do 2026-04-30</P_7>
+      <P_8A>szt.</P_8A>
+      <P_8B>1</P_8B>
+      <P_9A>15.00</P_9A>
+      <P_11>15.00</P_11>
+      <P_11Vat>3.45</P_11Vat>
+      <P_12>23</P_12>
+    </FaWiersz>
+    <Rozliczenie>
+      <DoZaplaty>134.02</DoZaplaty>
+    </Rozliczenie>
+    <Platnosc>
+      <TerminPlatnosci>
+        <Termin>2026-04-20</Termin>
+      </TerminPlatnosci>
+      <FormaPlatnosci>6</FormaPlatnosci>
+      <RachunekBankowy>
+        <NrRB>84103019449000230040945315</NrRB>
+      </RachunekBankowy>
+    </Platnosc>
+  </Fa>
+  <Stopka>
+    <Informacje>
+      <StopkaFaktury>Kapiał zakładowy 48 856 500</StopkaFaktury>
+    </Informacje>
+    <Rejestry>
+      <KRS>0000144621</KRS>
+      <REGON>015279111</REGON>
+      <BDO>000012241</BDO>
+    </Rejestry>
+  </Stopka>
+</Faktura>
