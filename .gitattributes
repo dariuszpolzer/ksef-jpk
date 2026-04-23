@@ -1,3 +1,24 @@
-﻿*.py text eol=lf
+﻿# Normalizacja końców linii
+* text=auto
+
+# Python
+*.py text eol=lf
+
+# JSON
+*.json text eol=lf
+
+# XML / XSD
 *.xml text eol=lf
 *.xsd text eol=lf
+
+# HTML
+*.html text eol=lf
+
+# Markdown
+*.md text eol=lf
+
+# Obrazy (binaria)
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
