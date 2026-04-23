@@ -2,7 +2,6 @@
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
 
-
 class JPKGeneratorPRO:
     NS = {
         "jpk": "http://crd.gov.pl/wzor/2025/12/19/14090/",

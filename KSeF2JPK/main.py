@@ -6,6 +6,7 @@ import traceback
 from datetime import datetime
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 sys.path.append(BASE_DIR)
 
 from ksef2jpk.parser.ksef_parser import KSeFParser
@@ -17,14 +18,14 @@ from ksef2jpk.validator.validate_jpk import validate_jpk
 from ksef2jpk.adapter.jpk_adapter import dict_to_jpk_model
 from ksef2jpk.utils.policz_xml_w_katalogu import policz_xml_w_katalogu
 from ksef2jpk.utils.jpk2html import JPK2HTML
-
+from ksef2jpk.utils.string_tools import safe_filename
 
 # ------------------------------------------------------------
 # KONFIGURACJA
 # ------------------------------------------------------------
 
-CONFIG_PATH = os.path.join(BASE_DIR, "config.json")
-
+#CONFIG_PATH = os.path.join(BASE_DIR, "config.json")
+CONFIG_PATH = os.path.abspath(os.path.join(BASE_DIR, "..", "config.json"))
 
 def load_config(config_path: str) -> dict:
     if not os.path.exists(config_path):
@@ -48,14 +49,23 @@ JPK_MIESIAC = CONFIG.get("jpk_miesiac") or now.month
 ENABLE_DATE_FILTER = CONFIG.get("enable_date_filter", True)
 
 numer = policz_xml_w_katalogu(XML_DIR) + 1
-output_pattern = CONFIG.get("output_file_pattern", "JPK_{numer}_{rok}.xml")
-output_filename = output_pattern.format(
-    numer=numer,
-    rok=JPK_ROK,
-    miesiac=f"{JPK_MIESIAC:02d}"
-)
-OUTPUT_XML = os.path.join(XML_DIR, output_filename)
 
+# wzorzec nazwy pliku z config
+output_pattern = CONFIG.get(
+    "output_file_pattern",
+    "JPK_{podatnik}_{miesiac}_{rok}.xml"
+)
+
+nazwa = CONFIG["podmiot"]["nazwa"]
+podatnik_safe = safe_filename(nazwa).upper()
+
+output_filename = output_pattern.format(
+    rok=JPK_ROK,
+    miesiac=f"{JPK_MIESIAC:02d}",
+    podatnik=podatnik_safe
+)
+
+OUTPUT_XML = os.path.join(XML_DIR, output_filename)
 
 # ------------------------------------------------------------
 # HELPER: WYDRUK SEKCJI

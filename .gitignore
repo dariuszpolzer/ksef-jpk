@@ -52,3 +52,5 @@ old_test_data/
 # --- Python tooling ---
 .pytest_cache/
 .mypy_cache/
+
+config.json
