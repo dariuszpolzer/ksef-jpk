@@ -1,0 +1,19 @@
+{
+  "input_dir": "data/xml",
+  "xml_dir": "output/xml",
+  "html_dir": "output/html",
+  "xsd_path": "validator/JPK_V7M_3.xsd",
+
+  "jpk_rok": 2026,
+  "jpk_miesiac": 4,
+
+  "enable_date_filter": true,
+
+  "output_file_pattern": "JPK_{numer}_{rok}.xml",
+
+  "podmiot": {
+    "nip": "0000000000",
+    "nazwa": "Example Company",
+    "kod_urzedu": "0000"
+  }
+}
