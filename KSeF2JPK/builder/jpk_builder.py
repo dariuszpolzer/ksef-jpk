@@ -2,7 +2,7 @@ from typing import List, Dict, Any
 from calendar import monthrange
 from datetime import datetime
 
-from KSeF2JPK.model.jpk_model import WierszEwidencji
+from ksef2jpk.model.jpk_model import WierszEwidencji
 
 
 class JPKBuilderPROPlus:

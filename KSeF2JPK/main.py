@@ -1,52 +1,60 @@
 import os
 import sys
+import json
 import glob
 import traceback
 from datetime import datetime
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(BASE_DIR)
 
-from KSeF2JPK.parser.ksef_parser import KSeFParser
-from KSeF2JPK.classifier.jpk_flags import JPKFlagsClassifier
-from KSeF2JPK.mapper.jpk_mapper import JPKMapperPRO
-from KSeF2JPK.builder.jpk_builder import JPKBuilderPROPlus
-from KSeF2JPK.generator.jpk_generator import JPKGeneratorPRO
-from KSeF2JPK.validator.validate_jpk import validate_jpk
-from KSeF2JPK.adapter.jpk_adapter import dict_to_jpk_model
-from KSeF2JPK.utils.policz_xml_w_katalogu import policz_xml_w_katalogu
-from KSeF2JPK.utils.jpk2html import JPK2HTML
+from ksef2jpk.parser.ksef_parser import KSeFParser
+from ksef2jpk.classifier.jpk_flags import JPKFlagsClassifier
+from ksef2jpk.mapper.jpk_mapper import JPKMapperPRO
+from ksef2jpk.builder.jpk_builder import JPKBuilderPROPlus
+from ksef2jpk.generator.jpk_generator import JPKGeneratorPRO
+from ksef2jpk.validator.validate_jpk import validate_jpk
+from ksef2jpk.adapter.jpk_adapter import dict_to_jpk_model
+from ksef2jpk.utils.policz_xml_w_katalogu import policz_xml_w_katalogu
+from ksef2jpk.utils.jpk2html import JPK2HTML
+
 
 # ------------------------------------------------------------
 # KONFIGURACJA
 # ------------------------------------------------------------
 
-INPUT_DIR = r"C:\Users\dpolz\Documents\KSeF2JPK\test_data"
-#OUTPUT_XML = r"C:\Users\dpolz\Documents\KSeF2JPK\wynik_jpk.xml"
-XSD_PATH = r"C:\Users\dpolz\Documents\KSeF2JPK\KSeF2JPK\validator\xsd\JPK_V7M_3.xsd"
-XML_DIR = r"C:\Users\dpolz\Documents\JPK\XML"
-
-PODMIOT = {
-    "nip": "6791444505",
-    "nazwa": "DARIUSZ POLZER",
-    "kod_urzedu": "1210",
-    "email": "dpolzer@post.pl",
-    "telefon": "509467620",
-    "data_urodzenia": "1957-12-06",
-}
+CONFIG_PATH = os.path.join(BASE_DIR, "config.json")
 
 
-rok = datetime.now().year
-miesiac= datetime.now().month
-numer = policz_xml_w_katalogu(XML_DIR)+1
+def load_config(config_path: str) -> dict:
+    if not os.path.exists(config_path):
+        raise FileNotFoundError(f"Brak pliku konfiguracyjnego: {config_path}")
 
-OUTPUT_XML = os.path.join( XML_DIR, f"JPK_Dariusz_Polzer_{numer}_{rok}.xml")
+    with open(config_path, "r", encoding="utf-8") as f:
+        return json.load(f)
 
-JPK_ROK = rok
-JPK_MIESIAC = miesiac
 
-# Łatwe wyłączanie filtra do testów
-ENABLE_DATE_FILTER = True
+CONFIG = load_config(CONFIG_PATH)
+
+INPUT_DIR = CONFIG["input_dir"]
+XSD_PATH = CONFIG["xsd_path"]
+XML_DIR = CONFIG["xml_dir"]
+
+PODMIOT = CONFIG["podmiot"]
+
+now = datetime.now()
+JPK_ROK = CONFIG.get("jpk_rok") or now.year
+JPK_MIESIAC = CONFIG.get("jpk_miesiac") or now.month
+ENABLE_DATE_FILTER = CONFIG.get("enable_date_filter", True)
+
+numer = policz_xml_w_katalogu(XML_DIR) + 1
+output_pattern = CONFIG.get("output_file_pattern", "JPK_{numer}_{rok}.xml")
+output_filename = output_pattern.format(
+    numer=numer,
+    rok=JPK_ROK,
+    miesiac=f"{JPK_MIESIAC:02d}"
+)
+OUTPUT_XML = os.path.join(XML_DIR, output_filename)
 
 
 # ------------------------------------------------------------
@@ -57,6 +65,7 @@ def print_section(title: str) -> None:
     print("\n" + "=" * 80)
     print(title)
     print("=" * 80)
+
 
 # ------------------------------------------------------------
 # HELPER: ZAKRES OKRESU JPK
@@ -108,7 +117,66 @@ def invoice_in_period(faktura, start_dt: datetime, end_dt: datetime) -> bool:
         return False
     return start_dt <= dt <= end_dt
 
+def is_candidate_input_xml(path: str) -> bool:
+    """
+    Filtruje tylko pliki, które chcemy traktować jako wejściowe faktury KSeF.
+    Odrzuca wygenerowane JPK i pomocnicze XML-e.
+    """
+    name = os.path.basename(path).lower()
 
+    excluded_prefixes = (
+        "jpk_",
+        "wynik_",
+        "output_",
+    )
+
+    excluded_exact = {
+        "wynik_test_jpk.xml",
+    }
+
+    if name in excluded_exact:
+        return False
+
+    if name.startswith(excluded_prefixes):
+        return False
+
+    return True
+
+
+def init_quality_stats() -> dict:
+    return {
+        "nr_ksef_xml": 0,
+        "nr_ksef_filename": 0,
+        "nr_ksef_missing": 0,
+        "with_gtu": 0,
+        "with_procedury": 0,
+        "sum_warning": 0,
+        "korekty": 0,
+        "input_xml_skipped": 0,
+    }
+
+def update_quality_stats(stats: dict, faktura) -> None:
+    nr_ksef_source = faktura.meta.get("nr_ksef_source", "none")
+    if nr_ksef_source == "xml":
+        stats["nr_ksef_xml"] += 1
+    elif nr_ksef_source == "filename":
+        stats["nr_ksef_filename"] += 1
+    else:
+        stats["nr_ksef_missing"] += 1
+
+    if faktura.meta.get("gtu"):
+        stats["with_gtu"] += 1
+
+    if faktura.meta.get("procedury"):
+        stats["with_procedury"] += 1
+
+    kontrola_sum = faktura.meta.get("kontrola_sum", {})
+    if kontrola_sum and not kontrola_sum.get("all_ok", True):
+        stats["sum_warning"] += 1
+
+    if faktura.meta.get("is_korekta"):
+        stats["korekty"] += 1
+        
 # ------------------------------------------------------------
 # MAIN
 # ------------------------------------------------------------
@@ -118,12 +186,17 @@ def main():
     classifier = JPKFlagsClassifier()
     mapper = JPKMapperPRO()
 
-    paths = sorted(glob.glob(os.path.join(INPUT_DIR, "*.xml")))
+#    paths = sorted(glob.glob(os.path.join(INPUT_DIR, "*.xml")))
+    all_paths = sorted(glob.glob(os.path.join(INPUT_DIR, "*.xml")))
+    paths = [p for p in all_paths if is_candidate_input_xml(p)]
+    skipped_non_input = [p for p in all_paths if not is_candidate_input_xml(p)]
 
     if not paths:
         print(f"❌ Nie znaleziono plików XML w katalogu: {INPUT_DIR}")
         return
-
+    quality_stats = init_quality_stats()
+    quality_stats["input_xml_skipped"] = len(skipped_non_input)
+    
     period_start, period_end = get_period_bounds(JPK_ROK, JPK_MIESIAC)
 
     # -----------------------------------------------------------------
@@ -133,6 +206,7 @@ def main():
     faktury = []
     parse_errors = []
     skipped_by_date = []
+    skipped_corrections = []
 
     for path in paths:
         filename = os.path.basename(path)
@@ -140,6 +214,30 @@ def main():
         try:
             faktura = parser.parse(path)
             faktura = classifier.apply_to_invoice(faktura)
+            update_quality_stats(quality_stats, faktura)
+            # ---------------------------------------------------------
+            # KOREKTY – tylko sygnał, bez wpuszczania do JPK
+            # ---------------------------------------------------------
+            if faktura.meta.get("is_korekta"):
+                skipped_corrections.append({
+                    "filename": filename,
+                    "numer": faktura.meta.get("numer"),
+                    "rodzaj_faktury": faktura.meta.get("rodzaj_faktury"),
+                    "przyczyna_korekty": faktura.meta.get("przyczyna_korekty"),
+                    "nr_fa_korygowanej": faktura.meta.get("nr_fa_korygowanej"),
+                    "data_fa_korygowanej": faktura.meta.get("data_fa_korygowanej"),
+                    "nr_ksef": faktura.nr_ksef,
+                })
+
+                print(
+                    f"[KOREKTA - POMINIĘTO] {filename} | "
+                    f"numer={faktura.meta.get('numer')!r} | "
+                    f"rodzaj={faktura.meta.get('rodzaj_faktury')!r} | "
+                    f"korygowana={faktura.meta.get('nr_fa_korygowanej')!r} | "
+                    f"data_korygowanej={faktura.meta.get('data_fa_korygowanej')!r} | "
+                    f"powód={faktura.meta.get('przyczyna_korekty')!r}"
+                )
+                continue
 
             if ENABLE_DATE_FILTER:
                 if not invoice_in_period(faktura, period_start, period_end):
@@ -185,10 +283,24 @@ def main():
     else:
         print("Filtr okresu JPK: WYŁĄCZONY")
 
+    print(f"Pominięte korekty: {len(skipped_corrections)}")
+
     if parse_errors:
         print_section("BŁĘDY PARSOWANIA")
         for filename, err in parse_errors:
             print(f"• {filename}: {err}")
+
+    if skipped_corrections:
+        print_section("POMINIĘTE KOREKTY")
+        for item in skipped_corrections:
+            print(
+                f"• {item['filename']} | "
+                f"numer={item['numer']!r} | "
+                f"rodzaj={item['rodzaj_faktury']!r} | "
+                f"korygowana={item['nr_fa_korygowanej']!r} | "
+                f"data_korygowanej={item['data_fa_korygowanej']!r} | "
+                f"powód={item['przyczyna_korekty']!r}"
+            )
 
     if not faktury:
         print("\n❌ Brak poprawnie sparsowanych faktur po filtracji. Kończę.")
@@ -297,28 +409,48 @@ def main():
     except Exception as e:
         print(f"❌ Błąd podczas walidacji JPK: {e}")
         traceback.print_exc()
-        
+
     # -----------------------------------------------------------------
     # 7. KONWERSJA DO HTML
     # -----------------------------------------------------------------
-
     converter = JPK2HTML(OUTPUT_XML)
     html_file = converter.convert()
 
+    # -----------------------------------------------------------------
+    # 8. PODSUMOWANIE I RAPORT JAKOŚCI
+    # -----------------------------------------------------------------
+    print_section("8. PODSUMOWANIE")
 
-    # -----------------------------------------------------------------
-    # 8. PODSUMOWANIE
-    # -----------------------------------------------------------------
     print(f"Plik XML w katalogu:            {numer}")
     print(f"Miesiąc:                        {JPK_MIESIAC}")
-    print(f"Rok:                            {JPK_ROK}")   
+    print(f"Rok:                            {JPK_ROK}")
+
     print(f"Liczba plików wejściowych:      {len(paths)}")
     print(f"Poprawnie sparsowane faktury:   {len(faktury)}")
     print(f"Poprawnie zmapowane wiersze:    {len(wiersze)}")
+
     print(f"Wiersze sprzedaży:              {len(sprzedaz_we)}")
     print(f"Wiersze zakupu:                 {len(zakupy_we)}")
+
     if ENABLE_DATE_FILTER:
         print(f"Pominięte po dacie:             {len(skipped_by_date)}")
+
+    print(f"Pominięte korekty:              {len(skipped_corrections)}")
+    print(f"XML-e pominięte jako nie-wejściowe: {quality_stats['input_xml_skipped']}")
+
+    print("")
+    print("---- RAPORT JAKOŚCI DANYCH ----")
+
+    print(f"NrKSeF z XML:                   {quality_stats['nr_ksef_xml']}")
+    print(f"NrKSeF z nazwy pliku:           {quality_stats['nr_ksef_filename']}")
+    print(f"Bez NrKSeF:                     {quality_stats['nr_ksef_missing']}")
+
+    print(f"Faktury z GTU:                  {quality_stats['with_gtu']}")
+    print(f"Faktury z procedurami:          {quality_stats['with_procedury']}")
+    print(f"Ostrzeżenia kontroli sum:       {quality_stats['sum_warning']}")
+    print(f"Wykryte korekty:                {quality_stats['korekty']}")
+
+    print("")
     print(f"Plik wynikowy:                  {OUTPUT_XML}")
     print(f"Podgląd HTML zapisany jako:     {html_file}")
 

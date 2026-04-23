@@ -1,4 +1,4 @@
-from KSeF2JPK.model.jpk_model import (
+from ksef2jpk.model.jpk_model import (
     JPKModel,
     SprzedazWiersz,
     ZakupWiersz,

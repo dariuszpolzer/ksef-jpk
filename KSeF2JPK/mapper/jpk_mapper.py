@@ -1,6 +1,6 @@
 from collections import defaultdict
 
-from KSeF2JPK.model.jpk_model import WierszEwidencji
+from ksef2jpk.model.jpk_model import WierszEwidencji
 
 
 class JPKMapperPRO:

@@ -29,10 +29,7 @@ Thumbs.db
 Desktop.ini
 
 # --- Editors ---
-# VSCode
 .vscode/
-
-# PyCharm / IntelliJ
 .idea/
 
 # --- System / temp ---
@@ -40,19 +37,18 @@ Desktop.ini
 *.temp
 *.bak
 
-# --- XML / XSD ---
-# (same files are kept, but temporary or generated ones ignored)
-*~.xml
-*~.xsd
+# --- XML / HTML generated files ---
+*.xml
+*.html
 
 # --- Git ---
-# Ignore merge conflict backups
 *.orig
 
-# Blokada danych wrażliwych
-*.xml
-
-# Katalogi danych (nie powinny trafić do repo)
+# --- Data folders ---
 test_data/
 prod_data/
 old_test_data/
+
+# --- Python tooling ---
+.pytest_cache/
+.mypy_cache/

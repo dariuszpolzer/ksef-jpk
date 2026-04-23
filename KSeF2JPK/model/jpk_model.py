@@ -4,10 +4,10 @@ from dataclasses import dataclass, field
 from typing import List, Optional
 from decimal import Decimal
 
-from KSeF2JPK.model.sprzedaz_model import SprzedazWiersz
-from KSeF2JPK.model.zakup_model import ZakupWiersz
-from KSeF2JPK.model.deklaracja_model import DeklaracjaVAT7
-from KSeF2JPK.model.podatnik_model import Podatnik
+from ksef2jpk.model.sprzedaz_model import SprzedazWiersz
+from ksef2jpk.model.zakup_model import ZakupWiersz
+from ksef2jpk.model.deklaracja_model import DeklaracjaVAT7
+from ksef2jpk.model.podatnik_model import Podatnik
 
 
 @dataclass

@@ -1,0 +1,20 @@
+{
+  "input_dir": "C:\\Users\\dpolz\\Documents\\KSeF2JPK_CLEAN\\test_data",
+  "xsd_path": "C:\\Users\\dpolz\\Documents\\KSeF2JPK_CLEAN\\validator\\JPK_V7M_3.xsd",
+  "xml_dir": "C:\\Users\\dpolz\\Documents\\JPK\\XML",
+
+  "jpk_rok": null,
+  "jpk_miesiac": null,
+  "enable_date_filter": true,
+
+  "podmiot": {
+    "nip": "6791444505",
+    "nazwa": "DARIUSZ POLZER",
+    "kod_urzedu": "1210",
+    "email": "dpolzer@post.pl",
+    "telefon": "509467620",
+    "data_urodzenia": "1957-12-06"
+  },
+
+  "output_file_pattern": "JPK_Dariusz_Polzer_{numer}_{rok}.xml"
+}
