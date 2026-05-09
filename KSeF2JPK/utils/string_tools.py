@@ -1,5 +1,5 @@
-import unicodedata
 import re
+import unicodedata
 
 
 def safe_filename(text: str) -> str:

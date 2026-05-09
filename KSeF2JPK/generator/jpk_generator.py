@@ -1,6 +1,6 @@
+import xml.etree.ElementTree as ET  # nosec B405
+from xml.dom import minidom  # nosec B408
 
-import xml.etree.ElementTree as ET
-from xml.dom import minidom
 
 class JPKGeneratorPRO:
     NS = {
@@ -73,13 +73,7 @@ class JPKGeneratorPRO:
         # ----------------------------------------------------
         # ROOT
         # ----------------------------------------------------
-        root = ET.Element(
-            f"{{{ns_jpk}}}JPK",
-            {
-                f"{{{ns_xsi}}}schemaLocation":
-                    f"{ns_jpk} {ns_jpk}schemat.xsd"
-            }
-        )
+        root = ET.Element(f"{{{ns_jpk}}}JPK", {f"{{{ns_xsi}}}schemaLocation": f"{ns_jpk} {ns_jpk}schemat.xsd"})
 
         # ----------------------------------------------------
         # 1. NAGŁÓWEK
@@ -136,13 +130,67 @@ class JPKGeneratorPRO:
         required_zero_fields = {"P_38", "P_51"}
 
         for pole in [
-            "P_10", "P_11", "P_12", "P_13", "P_14", "P_15", "P_16", "P_17", "P_18",
-            "P_19", "P_20", "P_21", "P_22", "P_23", "P_24", "P_25", "P_26", "P_27",
-            "P_28", "P_29", "P_30", "P_31", "P_32", "P_33", "P_34", "P_35", "P_36",
-            "P_37", "P_38", "P_39", "P_40", "P_41", "P_42", "P_43", "P_44", "P_45",
-            "P_46", "P_47", "P_48", "P_49", "P_50", "P_51", "P_52", "P_53", "P_54",
-            "P_55", "P_56", "P_57", "P_58", "P_59", "P_60", "P_61", "P_62", "P_63",
-            "P_64", "P_65", "P_66", "P_67", "P_68", "P_69", "P_ORDZU",
+            "P_10",
+            "P_11",
+            "P_12",
+            "P_13",
+            "P_14",
+            "P_15",
+            "P_16",
+            "P_17",
+            "P_18",
+            "P_19",
+            "P_20",
+            "P_21",
+            "P_22",
+            "P_23",
+            "P_24",
+            "P_25",
+            "P_26",
+            "P_27",
+            "P_28",
+            "P_29",
+            "P_30",
+            "P_31",
+            "P_32",
+            "P_33",
+            "P_34",
+            "P_35",
+            "P_36",
+            "P_37",
+            "P_38",
+            "P_39",
+            "P_40",
+            "P_41",
+            "P_42",
+            "P_43",
+            "P_44",
+            "P_45",
+            "P_46",
+            "P_47",
+            "P_48",
+            "P_49",
+            "P_50",
+            "P_51",
+            "P_52",
+            "P_53",
+            "P_54",
+            "P_55",
+            "P_56",
+            "P_57",
+            "P_58",
+            "P_59",
+            "P_60",
+            "P_61",
+            "P_62",
+            "P_63",
+            "P_64",
+            "P_65",
+            "P_66",
+            "P_67",
+            "P_68",
+            "P_69",
+            "P_ORDZU",
         ]:
             val = getattr(jpk_model.deklaracja, pole, None)
 
@@ -204,7 +252,7 @@ class JPKGeneratorPRO:
                 self.add_if_present(sw, ns_jpk, "WDT", getattr(w, "WDT", None))
                 self.add_if_present(sw, ns_jpk, "Eksport", getattr(w, "Eksport", None))
                 self.add_if_present(sw, ns_jpk, "OO", getattr(w, "OO", None))
-                #self.add_if_present(sw, ns_jpk, "MPP", getattr(w, "MPP", None))
+                # self.add_if_present(sw, ns_jpk, "MPP", getattr(w, "MPP", None))
                 self.add_if_present(sw, ns_jpk, "Marza", getattr(w, "Marza", None))
                 self.add_if_present(sw, ns_jpk, "SW", getattr(w, "SW", None))
                 self.add_if_present(sw, ns_jpk, "EE", getattr(w, "EE", None))
@@ -268,7 +316,7 @@ class JPKGeneratorPRO:
 
                 # UWAGA: GTU nie emitujemy w zakupach
                 self.add_if_present(zw, ns_jpk, "IMP", getattr(w, "IMP", None))
-               # self.add_if_present(zw, ns_jpk, "MPP", getattr(w, "MPP", None))
+                # self.add_if_present(zw, ns_jpk, "MPP", getattr(w, "MPP", None))
                 self.add_if_present(zw, ns_jpk, "OO", getattr(w, "OO", None))
                 self.add_if_present(zw, ns_jpk, "VAT_RR", getattr(w, "VAT_RR", None))
 
@@ -298,10 +346,10 @@ class JPKGeneratorPRO:
         # 5. ZAPIS
         # ----------------------------------------------------
         xml_str = ET.tostring(root, encoding="utf-8")
-        pretty = minidom.parseString(xml_str).toprettyxml(
-            indent="  ", encoding="utf-8"
+        pretty = minidom.parseString(xml_str).toprettyxml(  # nosec B318
+            indent="  ",
+            encoding="utf-8",
         )
 
         with open(output_path, "wb") as f:
             f.write(pretty)
-

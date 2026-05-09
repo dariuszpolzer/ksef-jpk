@@ -1,0 +1,65 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ksef-jpk"
+version = "0.1.0"
+description = "KSeF → JPK automation toolkit"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+    { name = "Dariusz Polzer" }
+]
+
+# Twoje zależności runtime (jeśli jakieś masz)
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "ruff",
+    "black",
+    "bandit",
+]
+
+[tool.setuptools]
+package-dir = {"" = "."}
+
+[tool.setuptools.packages.find]
+where = ["."]
+
+# -----------------------------------------
+# PYTEST
+# -----------------------------------------
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+norecursedirs = ["venv"]
+testpaths = ["tests"]
+
+# -----------------------------------------
+# RUFF
+# -----------------------------------------
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+src = ["src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = []
+
+# -----------------------------------------
+# BLACK
+# -----------------------------------------
+[tool.black]
+line-length = 120
+target-version = ["py311"]
+
+# -----------------------------------------
+# BANDIT
+# -----------------------------------------
+[tool.bandit]
+exclude_dirs = ["venv"]
+skips = ["B101", "B404", "B603", "B607", "B110", "B112"]

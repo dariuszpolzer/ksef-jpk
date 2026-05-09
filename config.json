@@ -1,0 +1,24 @@
+{
+  "batch_dir": "C:\\Users\\dpolz\\Documents\\ksef-sync\\data\\batches",
+  "input_dir": "C:\\Users\\dpolz\\Documents\\ksef-jpk\\test_data",
+
+  "xsd_path": "C:\\Users\\dpolz\\Documents\\ksef-jpk\\validator\\JPK_V7M_3.xsd",
+
+  "xml_dir": "C:\\Users\\dpolz\\Documents\\JPK\\XML",
+  "html_dir": "C:\\Users\\dpolz\\Documents\\JPK\\HTML",
+
+  "jpk_rok": null,
+  "jpk_miesiac": null,
+  "enable_date_filter": true,
+
+  "output_file_pattern": "JPK_{podatnik}_{miesiac}_{rok}.xml",
+
+  "podmiot": {
+    "nip": "6791444505",
+    "nazwa": "DARIUSZ POLZER",
+    "kod_urzedu": "1210",
+    "email": "dpolzer@post.pl",
+    "telefon": "509467620",
+    "data_urodzenia": "1957-12-06"
+  }
+}

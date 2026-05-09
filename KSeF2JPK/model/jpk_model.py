@@ -1,13 +1,10 @@
 # jpk_model.py
 
 from dataclasses import dataclass, field
-from typing import List, Optional
 from decimal import Decimal
+from typing import Optional
 
-from ksef2jpk.model.sprzedaz_model import SprzedazWiersz
-from ksef2jpk.model.zakup_model import ZakupWiersz
 from ksef2jpk.model.deklaracja_model import DeklaracjaVAT7
-from ksef2jpk.model.podatnik_model import Podatnik
 
 
 @dataclass
@@ -49,19 +46,18 @@ class JPKModel:
     poczta: str = ""
 
     deklaracja: DeklaracjaVAT7 = field(default_factory=DeklaracjaVAT7)
-    
+
     sprzedaz_wiersz: list = field(default_factory=list)
     zakup_wiersz: list = field(default_factory=list)
 
-    
     sprzedaz_ctrl: Optional[SprzedazCtrl] = None
     zakup_ctrl: Optional[ZakupCtrl] = None
-    
-    
+
+
 class WierszEwidencji:
     def __init__(
         self,
-        typ,                    # "sprzedaz" lub "zakup"
+        typ,
         netto,
         vat,
         stawka,
@@ -74,21 +70,27 @@ class WierszEwidencji:
         data_wplywu=None,
         gtu=None,
         procedury=None,
+        is_korekta=False,
+        rodzaj_faktury=None,
+        przyczyna_korekty=None,
+        nr_fa_korygowanej=None,
+        data_fa_korygowanej=None,
     ):
         self.typ = typ
         self.netto = netto
         self.vat = vat
         self.stawka = stawka
-
         self.kontrahent_nip = kontrahent_nip
         self.kontrahent_nazwa = kontrahent_nazwa
-
         self.nr_ksef = nr_ksef
         self.dokument = dokument
-
         self.data_wystawienia = data_wystawienia
         self.data_sprzedazy = data_sprzedazy
         self.data_wplywu = data_wplywu
-
         self.gtu = gtu
         self.procedury = procedury or []
+        self.is_korekta = is_korekta
+        self.rodzaj_faktury = rodzaj_faktury
+        self.przyczyna_korekty = przyczyna_korekty
+        self.nr_fa_korygowanej = nr_fa_korygowanej
+        self.data_fa_korygowanej = data_fa_korygowanej

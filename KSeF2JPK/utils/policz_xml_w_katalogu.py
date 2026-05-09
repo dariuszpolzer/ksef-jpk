@@ -1,5 +1,6 @@
 import os
 
+
 def policz_xml_w_katalogu(folder_path: str) -> int:
     """
     Zlicza pliki *.xml w podanym katalogu (bez podfolderów).

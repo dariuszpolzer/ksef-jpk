@@ -17,8 +17,7 @@ class JPKMapperPRO:
 
         if typ not in ("sprzedaz", "zakup"):
             raise ValueError(
-                f"Nieznany typ faktury dla dokumentu: "
-                f"{faktura.meta.get('numer') or faktura.nr_ksef or 'BRAK'}"
+                f"Nieznany typ faktury dla dokumentu: " f"{faktura.meta.get('numer') or faktura.nr_ksef or 'BRAK'}"
             )
 
         if typ == "sprzedaz":
@@ -64,12 +63,7 @@ class JPKMapperPRO:
                 gtu = meta_gtu
 
             # Procedury z pozycji
-            procedury_from_positions = sorted({
-                proc
-                for p in grupa_pozycji
-                for proc in (p.procedury or [])
-                if proc
-            })
+            procedury_from_positions = sorted({proc for p in grupa_pozycji for proc in (p.procedury or []) if proc})
 
             if procedury_from_positions:
                 procedury = procedury_from_positions
@@ -92,6 +86,11 @@ class JPKMapperPRO:
                     data_wplywu=data_wplywu,
                     gtu=gtu,
                     procedury=procedury,
+                    is_korekta=bool(faktura.meta.get("is_korekta")),
+                    rodzaj_faktury=faktura.meta.get("rodzaj_faktury"),
+                    przyczyna_korekty=faktura.meta.get("przyczyna_korekty"),
+                    nr_fa_korygowanej=faktura.meta.get("nr_fa_korygowanej"),
+                    data_fa_korygowanej=faktura.meta.get("data_fa_korygowanej"),
                 )
             )
 

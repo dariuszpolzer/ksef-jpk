@@ -1,12 +1,12 @@
-from typing import List, Dict, Any
 from calendar import monthrange
 from datetime import datetime
+from typing import Any
 
 from ksef2jpk.model.jpk_model import WierszEwidencji
 
 
 class JPKBuilderPROPlus:
-    def __init__(self, rok: int, miesiac: int, podmiot: Dict[str, Any]):
+    def __init__(self, rok: int, miesiac: int, podmiot: dict[str, Any]):
         self.rok = rok
         self.miesiac = miesiac
         self.podmiot = podmiot
@@ -16,10 +16,9 @@ class JPKBuilderPROPlus:
 
     def build(
         self,
-        sprzedaz: List[WierszEwidencji],
-        zakupy: List[WierszEwidencji]
-    ) -> Dict[str, Any]:
-
+        sprzedaz: list[WierszEwidencji],
+        zakupy: list[WierszEwidencji],
+    ) -> dict[str, Any]:
         pierwszy = f"{self.rok}-{self.miesiac:02d}-01"
         ostatni_dzien = monthrange(self.rok, self.miesiac)[1]
         ostatni = f"{self.rok}-{self.miesiac:02d}-{ostatni_dzien:02d}"
@@ -47,20 +46,16 @@ class JPKBuilderPROPlus:
                 "Telefon": self.podmiot.get("telefon", "123456789"),
                 "DataUrodzenia": self.podmiot.get("data_urodzenia", "1980-01-01"),
             },
-            "Deklaracja": {
-                "PozycjeSzczegolowe": deklaracja
-            },
+            "Deklaracja": {"PozycjeSzczegolowe": deklaracja},
             "Ewidencja": ewidencja,
         }
 
     def mapuj_deklaracje_PRO_PLUS(
         self,
-        sprzedaz: List[WierszEwidencji],
-        zakupy: List[WierszEwidencji]
-    ) -> Dict[str, int]:
-
+        sprzedaz: list[WierszEwidencji],
+        zakupy: list[WierszEwidencji],
+    ) -> dict[str, int | None]:
         d = {
-            # SPRZEDAŻ – pola podstawowe
             "P_10": 0.0,
             "P_11": 0.0,
             "P_12": 0.0,
@@ -70,9 +65,12 @@ class JPKBuilderPROPlus:
             "P_16": 0.0,
             "P_17": 0.0,
             "P_18": 0.0,
-            "P_19": 0.0, "P_20": 0.0,
-            "P_21": 0.0, "P_22": 0.0,
-            "P_23": 0.0, "P_24": 0.0,
+            "P_19": 0.0,
+            "P_20": 0.0,
+            "P_21": 0.0,
+            "P_22": 0.0,
+            "P_23": 0.0,
+            "P_24": 0.0,
             "P_25": 0.0,
             "P_26": 0.0,
             "P_27": 0.0,
@@ -85,26 +83,21 @@ class JPKBuilderPROPlus:
             "P_34": 0.0,
             "P_35": 0.0,
             "P_36": 0.0,
-
-            # SPRZEDAŻ – pola agregujące
             "P_37": 0,
             "P_38": 0,
             "P_39": 0,
-
-            # ZAKUPY – pola podstawowe
             "P_40": 0.0,
             "P_41": 0.0,
-            "P_42": 0.0, "P_43": 0.0,
-            "P_44": 0.0, "P_45": 0.0,
-            "P_46": 0.0, "P_47": 0.0,
-
-            # ZAKUPY – pola agregujące
+            "P_42": 0.0,
+            "P_43": 0.0,
+            "P_44": 0.0,
+            "P_45": 0.0,
+            "P_46": 0.0,
+            "P_47": 0.0,
             "P_48": 0,
             "P_49": 0,
             "P_50": 0,
             "P_51": 0,
-
-            # dalsze pola deklaracji
             "P_52": 0,
             "P_53": 0,
             "P_54": None,
@@ -126,9 +119,6 @@ class JPKBuilderPROPlus:
             "P_ORDZU": None,
         }
 
-        # ---------------------------------------------------------
-        # 1. POLA PODSTAWOWE SPRZEDAŻY
-        # ---------------------------------------------------------
         for w in sprzedaz:
             stawka = w.stawka
             netto = float(w.netto or 0)
@@ -156,68 +146,69 @@ class JPKBuilderPROPlus:
             if stawka is None or "ZW" in procedury or "NP" in procedury:
                 d["P_35"] += netto
 
-        # ---------------------------------------------------------
-        # 2. POLA PODSTAWOWE ZAKUPÓW
-        # Upraszczamy: wszystko jako "pozostałe nabycia"
-        # ---------------------------------------------------------
         for w in zakupy:
-            stawka = w.stawka
             netto = float(w.netto or 0)
             vat = float(w.vat or 0)
 
-            if stawka == 23:
+            if vat:
                 d["P_42"] += netto
                 d["P_43"] += vat
-            elif stawka == 8:
-                d["P_44"] += netto
-                d["P_45"] += vat
-            elif stawka == 5:
-                d["P_46"] += netto
-                d["P_47"] += vat
 
-        # ---------------------------------------------------------
-        # 3. ZAOKRĄGLENIE PÓL PODSTAWOWYCH
-        # ---------------------------------------------------------
         base_amount_fields = [
-            "P_10", "P_11", "P_12", "P_13", "P_14", "P_15", "P_16", "P_17", "P_18",
-            "P_19", "P_20", "P_21", "P_22", "P_23", "P_24", "P_25", "P_26",
-            "P_27", "P_28", "P_29", "P_30", "P_31", "P_32", "P_33", "P_34",
-            "P_35", "P_36", "P_40", "P_41", "P_42", "P_43", "P_44", "P_45",
-            "P_46", "P_47",
+            "P_10",
+            "P_11",
+            "P_12",
+            "P_13",
+            "P_14",
+            "P_15",
+            "P_16",
+            "P_17",
+            "P_18",
+            "P_19",
+            "P_20",
+            "P_21",
+            "P_22",
+            "P_23",
+            "P_24",
+            "P_25",
+            "P_26",
+            "P_27",
+            "P_28",
+            "P_29",
+            "P_30",
+            "P_31",
+            "P_32",
+            "P_33",
+            "P_34",
+            "P_35",
+            "P_36",
+            "P_40",
+            "P_41",
+            "P_42",
+            "P_43",
+            "P_44",
+            "P_45",
+            "P_46",
+            "P_47",
         ]
 
-        for k in base_amount_fields:
-            d[k] = self._round_pln(d[k])
+        for field in base_amount_fields:
+            d[field] = self._round_pln(d[field])
 
-        # ---------------------------------------------------------
-        # 4. POLA AGREGUJĄCE – liczone z PÓL DEKLARACYJNYCH
-        # uproszczony i spójny model
-        # ---------------------------------------------------------
-
-        # Łączna podstawa opodatkowania
-        d["P_37"] = (
-            d["P_19"] + d["P_21"] + d["P_23"] +
-            d["P_25"] + d["P_27"] + d["P_29"] + d["P_31"]
-        )
-
-        # Łączny podatek należny
+        d["P_37"] = d["P_19"] + d["P_21"] + d["P_23"] + d["P_25"] + d["P_27"] + d["P_29"] + d["P_31"]
         d["P_38"] = d["P_20"] + d["P_22"] + d["P_24"]
-
-        # Łączna wysokość podatku naliczonego do odliczenia
-        d["P_48"] = d["P_43"] + d["P_45"] + d["P_47"]
-
-        # Wysokość podatku do wpłaty
+        d["P_48"] = d["P_43"]
         d["P_51"] = max(d["P_38"] - d["P_48"], 0)
 
         return d
 
     def buduj_ewidencje(
         self,
-        sprzedaz: List[WierszEwidencji],
-        zakupy: List[WierszEwidencji]
-    ) -> Dict[str, Any]:
-
+        sprzedaz: list[WierszEwidencji],
+        zakupy: list[WierszEwidencji],
+    ) -> dict[str, Any]:
         sprzedaz_wiersze = []
+
         for lp, w in enumerate(sprzedaz, start=1):
             self._validate_sales_row(w)
 
@@ -235,16 +226,18 @@ class JPKBuilderPROPlus:
             else:
                 row["OFF"] = "1"
 
-            row.update({
-                "K_19": w.netto if w.stawka == 23 else 0,
-                "K_20": w.vat if w.stawka == 23 else 0,
-                "K_21": w.netto if w.stawka == 8 else 0,
-                "K_22": w.vat if w.stawka == 8 else 0,
-                "K_23": w.netto if w.stawka == 5 else 0,
-                "K_24": w.vat if w.stawka == 5 else 0,
-                "K_27": w.netto if w.stawka == 0 else 0,
-                "K_28": 0,
-            })
+            row.update(
+                {
+                    "K_19": w.netto if w.stawka == 23 else 0,
+                    "K_20": w.vat if w.stawka == 23 else 0,
+                    "K_21": w.netto if w.stawka == 8 else 0,
+                    "K_22": w.vat if w.stawka == 8 else 0,
+                    "K_23": w.netto if w.stawka == 5 else 0,
+                    "K_24": w.vat if w.stawka == 5 else 0,
+                    "K_27": w.netto if w.stawka == 0 else 0,
+                    "K_28": 0,
+                }
+            )
 
             if w.gtu:
                 row["GTU"] = w.gtu
@@ -270,6 +263,7 @@ class JPKBuilderPROPlus:
             sprzedaz_wiersze.append(row)
 
         zakup_wiersze = []
+
         for lp, w in enumerate(zakupy, start=1):
             self._validate_purchase_row(w)
 
@@ -287,17 +281,16 @@ class JPKBuilderPROPlus:
             else:
                 row["OFF"] = "1"
 
-            row.update({
-                "K_42": w.netto if w.stawka == 23 else 0,
-                "K_43": w.vat if w.stawka == 23 else 0,
-                "K_44": w.netto if w.stawka == 8 else 0,
-                "K_45": w.vat if w.stawka == 8 else 0,
-                "K_46": w.netto if w.stawka == 5 else 0,
-                "K_47": w.vat if w.stawka == 5 else 0,
-            })
-
-            if w.gtu:
-                row["GTU"] = w.gtu
+            row.update(
+                {
+                    "K_42": w.netto if w.vat else 0,
+                    "K_43": w.vat if w.vat else 0,
+                    "K_44": 0,
+                    "K_45": 0,
+                    "K_46": 0,
+                    "K_47": 0,
+                }
+            )
 
             procedury = set(w.procedury or [])
             if "IMP" in procedury:
@@ -328,12 +321,7 @@ class JPKBuilderPROPlus:
         zakup_ctrl = {
             "LiczbaWierszyZakupow": len(zakup_wiersze),
             "PodatekNaliczony": round(
-                sum(
-                    float(w.get("K_43", 0))
-                    + float(w.get("K_45", 0))
-                    + float(w.get("K_47", 0))
-                    for w in zakup_wiersze
-                ),
+                sum(float(w.get("K_43", 0)) for w in zakup_wiersze),
                 2,
             ),
         }

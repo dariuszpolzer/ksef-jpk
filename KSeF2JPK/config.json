@@ -1,0 +1,6 @@
+{
+  "batch_dir": "C:/Users/dpolz/Documents/ksef-sync/data/batches",
+  "xml_dir": "C:/Users/dpolz/Documents/JPK/XML",
+  "html_dir": "C:/Users/dpolz/Documents/JPK/HTML",
+  "xsd_path": "validator/JPK_V7M_3.xsd"
+}

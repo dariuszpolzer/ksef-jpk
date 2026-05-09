@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+
 @dataclass
 class Podatnik:
     # dane identyfikacyjne

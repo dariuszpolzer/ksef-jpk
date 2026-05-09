@@ -35,43 +35,45 @@ class JPKFlagsClassifier:
     # Prosty słownik słów kluczowych -> GTU
     # To jest wersja startowa. Docelowo można to przenieść do JSON.
     GTU_KEYWORDS = {
-        "GTU_01": [
-            "alkohol", "wino", "piwo", "wódka", "whisky", "napój alkoholowy"
-        ],
-        "GTU_02": [
-            "paliwo", "benzyna", "olej napędowy", "gaz", "smar"
-        ],
-        "GTU_03": [
-            "olej opałowy", "olej smarowy"
-        ],
+        "GTU_01": ["alkohol", "wino", "piwo", "wódka", "whisky", "napój alkoholowy"],
+        "GTU_02": ["paliwo", "benzyna", "olej napędowy", "gaz", "smar"],
+        "GTU_03": ["olej opałowy", "olej smarowy"],
         "GTU_06": [
-            "telefon", "smartfon", "laptop", "komputer", "tablet",
-            "dysk", "ssd", "hub usb", "monitor", "drukarka", "elektronika"
+            "telefon",
+            "smartfon",
+            "laptop",
+            "komputer",
+            "tablet",
+            "dysk",
+            "ssd",
+            "hub usb",
+            "monitor",
+            "drukarka",
+            "elektronika",
         ],
-        "GTU_07": [
-            "pojazd", "samochód", "auto", "motocykl", "części samochodowe"
-        ],
-        "GTU_08": [
-            "metal szlachetny", "złoto", "srebro", "platyna"
-        ],
-        "GTU_09": [
-            "lek", "wyrób medyczny", "medyczny", "farmaceutyczny"
-        ],
-        "GTU_10": [
-            "budynek", "lokal", "nieruchomość", "grunt", "działka"
-        ],
-        "GTU_11": [
-            "emisja", "uprawnienia do emisji"
-        ],
+        "GTU_07": ["pojazd", "samochód", "auto", "motocykl", "części samochodowe"],
+        "GTU_08": ["metal szlachetny", "złoto", "srebro", "platyna"],
+        "GTU_09": ["lek", "wyrób medyczny", "medyczny", "farmaceutyczny"],
+        "GTU_10": ["budynek", "lokal", "nieruchomość", "grunt", "działka"],
+        "GTU_11": ["emisja", "uprawnienia do emisji"],
         "GTU_12": [
-            "doradztwo", "księgowość", "rachunkowość", "prawne",
-            "marketing", "reklama", "szkolenie", "transport", "spedycja",
-            "magazynowanie", "telekomunikacyjne", "telekomunikacja",
-            "internet", "wifi", "ochrona internetu"
+            "doradztwo",
+            "księgowość",
+            "rachunkowość",
+            "prawne",
+            "marketing",
+            "reklama",
+            "szkolenie",
+            "transport",
+            "spedycja",
+            "magazynowanie",
+            "telekomunikacyjne",
+            "telekomunikacja",
+            "internet",
+            "wifi",
+            "ochrona internetu",
         ],
-        "GTU_13": [
-            "transport", "spedycja", "gospodarka magazynowa"
-        ],
+        "GTU_13": ["transport", "spedycja", "gospodarka magazynowa"],
     }
 
     # Słowa-klucze do prostego wsparcia procedur
@@ -278,7 +280,7 @@ class JPKFlagsClassifier:
             return True
 
         for p in faktura.pozycje or []:
-            for proc in (p.procedury or []):
+            for proc in p.procedury or []:
                 if str(proc).upper() == "OO":
                     return True
 

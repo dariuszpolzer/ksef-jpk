@@ -1,34 +1,27 @@
-
-import os
-import sys
-import json
+import argparse
 import glob
+import json
+import os
 import traceback
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+
+from ksef2jpk.adapter.jpk_adapter import dict_to_jpk_model
+from ksef2jpk.builder.jpk_builder import JPKBuilderPROPlus
+from ksef2jpk.classifier.jpk_flags import JPKFlagsClassifier
+from ksef2jpk.generator.jpk_generator import JPKGeneratorPRO
+from ksef2jpk.mapper.jpk_mapper import JPKMapperPRO
+from ksef2jpk.parser.ksef_parser import KSeFParser
+from ksef2jpk.utils.batch_loader import get_invoices_dir
+from ksef2jpk.utils.jpk2html import JPK2HTML
+from ksef2jpk.utils.policz_xml_w_katalogu import policz_xml_w_katalogu
+from ksef2jpk.utils.string_tools import safe_filename
+from ksef2jpk.validator.validate_jpk import validate_jpk
+
+# ------------------------------------------------------------
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-sys.path.append(BASE_DIR)
-
-from ksef2jpk.parser.ksef_parser import KSeFParser
-from ksef2jpk.classifier.jpk_flags import JPKFlagsClassifier
-from ksef2jpk.mapper.jpk_mapper import JPKMapperPRO
-from ksef2jpk.builder.jpk_builder import JPKBuilderPROPlus
-from ksef2jpk.generator.jpk_generator import JPKGeneratorPRO
-from ksef2jpk.validator.validate_jpk import validate_jpk
-from ksef2jpk.adapter.jpk_adapter import dict_to_jpk_model
-from ksef2jpk.utils.policz_xml_w_katalogu import policz_xml_w_katalogu
-from ksef2jpk.utils.jpk2html import JPK2HTML
-from ksef2jpk.utils.string_tools import safe_filename
-from ksef2jpk.utils.batch_loader import get_invoices_dir
-
-
-# ------------------------------------------------------------
-# KONFIGURACJA
-# ------------------------------------------------------------
-
-CONFIG_PATH = os.path.abspath(os.path.join(BASE_DIR, "..", "config.json"))
+DEFAULT_CONFIG_PATH = os.path.abspath(os.path.join(BASE_DIR, "..", "config.json"))
 
 
 def load_config(config_path: str) -> dict:
@@ -37,6 +30,19 @@ def load_config(config_path: str) -> dict:
 
     with open(config_path, "r", encoding="utf-8") as f:
         return json.load(f)
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="KSeF2JPK - generator JPK z faktur KSeF")
+
+    parser.add_argument("--year", type=int, help="Rok JPK, np. 2026")
+    parser.add_argument("--month", type=int, help="Miesiąc JPK, np. 4")
+    parser.add_argument("--input-dir", help="Katalog z fakturami XML")
+    parser.add_argument("--batch-dir", help="Katalog batch z ksef-sync")
+    parser.add_argument("--config", help="Ścieżka do config.json")
+    parser.add_argument("--no-date-filter", action="store_true", help="Wyłącz filtr daty")
+
+    return parser.parse_args()
 
 
 def resolve_input_source(config: dict):
@@ -65,7 +71,25 @@ def resolve_input_source(config: dict):
     raise RuntimeError("Brak input_dir albo batch_dir w config.json")
 
 
+ARGS = parse_args()
+
+CONFIG_PATH = os.path.abspath(ARGS.config) if ARGS.config else DEFAULT_CONFIG_PATH
 CONFIG = load_config(CONFIG_PATH)
+XSD_PATH = CONFIG["xsd_path"]
+XML_DIR = CONFIG["xml_dir"]
+PODMIOT = CONFIG["podmiot"]
+HTML_DIR = CONFIG.get("html_dir", os.path.join(os.path.dirname(XML_DIR), "html"))
+
+os.makedirs(XML_DIR, exist_ok=True)
+os.makedirs(HTML_DIR, exist_ok=True)
+
+if ARGS.input_dir:
+    CONFIG["input_dir"] = ARGS.input_dir
+    CONFIG["batch_dir"] = None
+
+if ARGS.batch_dir:
+    CONFIG["batch_dir"] = ARGS.batch_dir
+    CONFIG["input_dir"] = None
 
 INPUT_DIR, BATCH_DIR, BATCH_MANIFEST = resolve_input_source(CONFIG)
 
@@ -79,31 +103,28 @@ if BATCH_MANIFEST:
     print("Batch ID:", batch_info.get("batch_id"))
     print("Faktur w manifeście:", batch_info.get("invoice_count"))
 
-XSD_PATH = CONFIG["xsd_path"]
-XML_DIR = CONFIG["xml_dir"]
-
-PODMIOT = CONFIG["podmiot"]
 
 now = datetime.now()
-JPK_ROK = CONFIG.get("jpk_rok") or now.year
-JPK_MIESIAC = CONFIG.get("jpk_miesiac") or now.month
+
+JPK_ROK = ARGS.year or CONFIG.get("jpk_rok") or now.year
+JPK_MIESIAC = ARGS.month or CONFIG.get("jpk_miesiac") or now.month
+
+if not 1 <= int(JPK_MIESIAC) <= 12:
+    raise ValueError(f"Nieprawidłowy miesiąc: {JPK_MIESIAC}")
+
 ENABLE_DATE_FILTER = CONFIG.get("enable_date_filter", True)
+
+if ARGS.no_date_filter:
+    ENABLE_DATE_FILTER = False
 
 numer = policz_xml_w_katalogu(XML_DIR) + 1
 
-output_pattern = CONFIG.get(
-    "output_file_pattern",
-    "JPK_{podatnik}_{miesiac}_{rok}.xml"
-)
+output_pattern = CONFIG.get("output_file_pattern", "JPK_{podatnik}_{miesiac}_{rok}.xml")
 
 nazwa = CONFIG["podmiot"]["nazwa"]
 podatnik_safe = safe_filename(nazwa).upper()
 
-output_filename = output_pattern.format(
-    rok=JPK_ROK,
-    miesiac=f"{JPK_MIESIAC:02d}",
-    podatnik=podatnik_safe
-)
+output_filename = output_pattern.format(rok=JPK_ROK, miesiac=f"{JPK_MIESIAC:02d}", podatnik=podatnik_safe)
 
 OUTPUT_XML = os.path.join(XML_DIR, output_filename)
 
@@ -111,6 +132,7 @@ OUTPUT_XML = os.path.join(XML_DIR, output_filename)
 # ------------------------------------------------------------
 # HELPER: WYDRUK SEKCJI
 # ------------------------------------------------------------
+
 
 def print_section(title: str) -> None:
     print("\n" + "=" * 80)
@@ -122,8 +144,10 @@ def print_section(title: str) -> None:
 # HELPER: ZAKRES OKRESU JPK
 # ------------------------------------------------------------
 
+
 def get_period_bounds(year: int, month: int):
     from calendar import monthrange
+
     start = datetime(year, month, 1)
     end = datetime(year, month, monthrange(year, month)[1])
     return start, end
@@ -147,16 +171,10 @@ def get_filter_date_for_invoice(faktura):
     typ = faktura.meta.get("typ")
 
     if typ == "sprzedaz":
-        return (
-            faktura.meta.get("data_sprzedazy")
-            or faktura.meta.get("data_wystawienia")
-        )
+        return faktura.meta.get("data_sprzedazy") or faktura.meta.get("data_wystawienia")
 
     if typ == "zakup":
-        return (
-            faktura.meta.get("data_wplywu")
-            or faktura.meta.get("data_wystawienia")
-        )
+        return faktura.meta.get("data_wplywu") or faktura.meta.get("data_wystawienia")
 
     return faktura.meta.get("data_wystawienia")
 
@@ -205,6 +223,7 @@ def init_quality_stats() -> dict:
         "sum_warning": 0,
         "korekty": 0,
         "input_xml_skipped": 0,
+        "input_validation_warning": 0,
     }
 
 
@@ -231,13 +250,18 @@ def update_quality_stats(stats: dict, faktura) -> None:
     if faktura.meta.get("is_korekta"):
         stats["korekty"] += 1
 
+    walidacja = faktura.meta.get("walidacja_wejscia", {})
+    if walidacja and not walidacja.get("ok", True):
+        stats["input_validation_warning"] += 1
+
 
 # ------------------------------------------------------------
 # MAIN
 # ------------------------------------------------------------
 
+
 def main():
-    parser = KSeFParser()
+    parser = KSeFParser(PODMIOT["nip"])
     classifier = JPKFlagsClassifier()
     mapper = JPKMapperPRO()
 
@@ -248,10 +272,7 @@ def main():
     if BATCH_MANIFEST:
         manifest_count = BATCH_MANIFEST.get("batch", {}).get("invoice_count")
         if manifest_count is not None and manifest_count != len(paths):
-            print(
-                f"⚠️ Różnica manifest/XML: "
-                f"manifest={manifest_count}, XML={len(paths)}"
-            )
+            print(f"⚠️ Różnica manifest/XML: " f"manifest={manifest_count}, XML={len(paths)}")
 
     if not paths:
         print(f"❌ Nie znaleziono plików XML w katalogu: {INPUT_DIR}")
@@ -285,25 +306,24 @@ def main():
             # KOREKTY – tylko sygnał, bez wpuszczania do JPK
             # ---------------------------------------------------------
             if faktura.meta.get("is_korekta"):
-                skipped_corrections.append({
-                    "filename": filename,
-                    "numer": faktura.meta.get("numer"),
-                    "rodzaj_faktury": faktura.meta.get("rodzaj_faktury"),
-                    "przyczyna_korekty": faktura.meta.get("przyczyna_korekty"),
-                    "nr_fa_korygowanej": faktura.meta.get("nr_fa_korygowanej"),
-                    "data_fa_korygowanej": faktura.meta.get("data_fa_korygowanej"),
-                    "nr_ksef": faktura.nr_ksef,
-                })
+                skipped_corrections.append(
+                    {
+                        "filename": filename,
+                        "numer": faktura.meta.get("numer"),
+                        "rodzaj_faktury": faktura.meta.get("rodzaj_faktury"),
+                        "przyczyna_korekty": faktura.meta.get("przyczyna_korekty"),
+                        "nr_fa_korygowanej": faktura.meta.get("nr_fa_korygowanej"),
+                        "data_fa_korygowanej": faktura.meta.get("data_fa_korygowanej"),
+                        "nr_ksef": faktura.nr_ksef,
+                    }
+                )
 
                 print(
-                    f"[KOREKTA - POMINIĘTO] {filename} | "
+                    f"[KOREKTA] {filename} | "
                     f"numer={faktura.meta.get('numer')!r} | "
-                    f"rodzaj={faktura.meta.get('rodzaj_faktury')!r} | "
                     f"korygowana={faktura.meta.get('nr_fa_korygowanej')!r} | "
-                    f"data_korygowanej={faktura.meta.get('data_fa_korygowanej')!r} | "
                     f"powód={faktura.meta.get('przyczyna_korekty')!r}"
                 )
-                continue
 
             if ENABLE_DATE_FILTER:
                 if not invoice_in_period(faktura, period_start, period_end):
@@ -311,9 +331,7 @@ def main():
                     skipped_by_date.append((filename, skip_date, faktura.meta.get("typ")))
 
                     print(
-                        f"[POMINIĘTO] {filename} | "
-                        f"typ={faktura.meta.get('typ')!r} | "
-                        f"data_filtra={skip_date!r}"
+                        f"[POMINIĘTO] {filename} | " f"typ={faktura.meta.get('typ')!r} | " f"data_filtra={skip_date!r}"
                     )
                     continue
 
@@ -342,15 +360,12 @@ def main():
     print(f"\nZaładowano poprawnie {len(faktury)} z {len(paths)} faktur wejściowych.")
 
     if ENABLE_DATE_FILTER:
-        print(
-            f"Filtr okresu JPK: WŁĄCZONY "
-            f"({period_start.date()} -> {period_end.date()})"
-        )
+        print(f"Filtr okresu JPK: WŁĄCZONY " f"({period_start.date()} -> {period_end.date()})")
         print(f"Pominięto po dacie: {len(skipped_by_date)}")
     else:
         print("Filtr okresu JPK: WYŁĄCZONY")
 
-    print(f"Pominięte korekty: {len(skipped_corrections)}")
+    print(f"Korekty uwzględnione: {len(skipped_corrections)}")
 
     if parse_errors:
         print_section("BŁĘDY PARSOWANIA")
@@ -394,6 +409,7 @@ def main():
                 print(
                     f"[OK] #{i}.{j} | "
                     f"typ={w.typ!r} | "
+                    f"korekta={w.is_korekta!r} | "
                     f"nip={w.kontrahent_nip!r} | "
                     f"nazwa={w.kontrahent_nazwa!r} | "
                     f"netto={w.netto} | "
@@ -436,21 +452,14 @@ def main():
     if inne_we:
         print("\n⚠️ Wykryto wiersze z nieobsługiwanym typem:")
         for w in inne_we:
-            print(
-                f"• dokument={w.dokument!r}, typ={w.typ!r}, "
-                f"nip={w.kontrahent_nip!r}, nr_ksef={w.nr_ksef!r}"
-            )
+            print(f"• dokument={w.dokument!r}, typ={w.typ!r}, " f"nip={w.kontrahent_nip!r}, nr_ksef={w.nr_ksef!r}")
 
     # -----------------------------------------------------------------
     # 4. BUDOWA JPK
     # -----------------------------------------------------------------
     print_section("4. BUDOWA JPK")
 
-    builder = JPKBuilderPROPlus(
-        rok=JPK_ROK,
-        miesiac=JPK_MIESIAC,
-        podmiot=PODMIOT
-    )
+    builder = JPKBuilderPROPlus(rok=JPK_ROK, miesiac=JPK_MIESIAC, podmiot=PODMIOT)
 
     try:
         jpk_dict = builder.build(sprzedaz_we, zakupy_we)
@@ -489,7 +498,7 @@ def main():
     # -----------------------------------------------------------------
     # 7. KONWERSJA DO HTML
     # -----------------------------------------------------------------
-    converter = JPK2HTML(OUTPUT_XML)
+    converter = JPK2HTML(OUTPUT_XML, HTML_DIR)
     html_file = converter.convert()
 
     # -----------------------------------------------------------------

@@ -1,56 +1,34 @@
-# --- Python ---
+# python
 __pycache__/
-*.py[cod]
-*$py.class
+*.pyc
+*.pyo
+*.pyd
 
-# Virtual environments
+# pytest
+.pytest_cache/
+
+# venv
 venv/
-env/
-.venv/
-.env/
+.env
 
-# Distribution / packaging
-build/
+# build
 dist/
-*.egg-info/
-*.egg
+build/
 
-# PyInstaller
-*.spec
-
-# Logs
-*.log
-
-# Jupyter
-.ipynb_checkpoints/
-
-# --- Windows ---
-Thumbs.db
-Desktop.ini
-
-# --- Editors ---
+# IDE
 .vscode/
 .idea/
 
-# --- System / temp ---
-*.tmp
-*.temp
-*.bak
+# logs
+logs/
 
-# --- XML / HTML generated files ---
+# output
+JPK/
 *.xml
 *.html
 
-# --- Git ---
-*.orig
+# OS
+Thumbs.db
+.DS_Store
 
-# --- Data folders ---
-test_data/
-prod_data/
-old_test_data/
-
-# --- Python tooling ---
-.pytest_cache/
-.mypy_cache/
-
-config.json
+*.egg-info/

@@ -1,10 +1,6 @@
-from ksef2jpk.model.jpk_model import (
-    JPKModel,
-    SprzedazWiersz,
-    ZakupWiersz,
-    SprzedazCtrl,
-    ZakupCtrl,
-)
+from ksef2jpk.model.jpk_model import JPKModel, SprzedazCtrl, ZakupCtrl
+from ksef2jpk.model.sprzedaz_model import SprzedazWiersz
+from ksef2jpk.model.zakup_model import ZakupWiersz
 
 
 def dict_to_jpk_model(jpk_dict: dict) -> JPKModel:
@@ -28,19 +24,73 @@ def dict_to_jpk_model(jpk_dict: dict) -> JPKModel:
     # ---------------- Deklaracja ----------------
     poz = jpk_dict.get("Deklaracja", {}).get("PozycjeSzczegolowe", {})
     for pole in [
-        "P_10", "P_11", "P_12", "P_13", "P_14", "P_15", "P_16", "P_17", "P_18",
-        "P_19", "P_20", "P_21", "P_22", "P_23", "P_24", "P_25", "P_26", "P_27",
-        "P_28", "P_29", "P_30", "P_31", "P_32", "P_33", "P_34", "P_35", "P_36",
-        "P_37", "P_38", "P_39", "P_40", "P_41", "P_42", "P_43", "P_44", "P_45",
-        "P_46", "P_47", "P_48", "P_49", "P_50", "P_51", "P_52", "P_53", "P_54",
-        "P_55", "P_56", "P_57", "P_58", "P_59", "P_60", "P_61", "P_62", "P_63",
-        "P_64", "P_65", "P_66", "P_67", "P_68", "P_69", "P_ORDZU",
+        "P_10",
+        "P_11",
+        "P_12",
+        "P_13",
+        "P_14",
+        "P_15",
+        "P_16",
+        "P_17",
+        "P_18",
+        "P_19",
+        "P_20",
+        "P_21",
+        "P_22",
+        "P_23",
+        "P_24",
+        "P_25",
+        "P_26",
+        "P_27",
+        "P_28",
+        "P_29",
+        "P_30",
+        "P_31",
+        "P_32",
+        "P_33",
+        "P_34",
+        "P_35",
+        "P_36",
+        "P_37",
+        "P_38",
+        "P_39",
+        "P_40",
+        "P_41",
+        "P_42",
+        "P_43",
+        "P_44",
+        "P_45",
+        "P_46",
+        "P_47",
+        "P_48",
+        "P_49",
+        "P_50",
+        "P_51",
+        "P_52",
+        "P_53",
+        "P_54",
+        "P_55",
+        "P_56",
+        "P_57",
+        "P_58",
+        "P_59",
+        "P_60",
+        "P_61",
+        "P_62",
+        "P_63",
+        "P_64",
+        "P_65",
+        "P_66",
+        "P_67",
+        "P_68",
+        "P_69",
+        "P_ORDZU",
     ]:
         if pole in poz:
             setattr(jpk.deklaracja, pole, poz.get(pole))
 
     # ---------------- Ewidencja ----------------
-    
+
     e = jpk_dict.get("Ewidencja", {})
 
     # Sprzedaż

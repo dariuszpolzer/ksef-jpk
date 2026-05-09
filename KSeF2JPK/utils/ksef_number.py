@@ -1,7 +1,6 @@
 import os
 import re
 
-
 # Format zgodny z nazwami plików z API KSeF, np.:
 # 5261040567-20260313-5D3A990000FD-B1
 # 5270005984-20260403-4B04D200000B-4D

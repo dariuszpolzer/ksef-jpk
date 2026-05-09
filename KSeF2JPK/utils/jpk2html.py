@@ -1,8 +1,8 @@
 import os
 import sys
-import xml.etree.ElementTree as ET
 from html import escape
 
+from defusedxml import ElementTree as ET
 
 TAG_COLOR = "#D0D0D0"
 
@@ -14,16 +14,26 @@ def localname(tag):
 
 
 class JPK2HTML:
-
-    def __init__(self, xml_path: str):
+    def __init__(self, xml_path: str, output_dir: str | None = None):
         self.xml_path = xml_path
 
-        self.output_dir = r"C:\Users\dpolz\Documents\JPK\HTML"
+        if output_dir is None:
+            output_dir = os.path.join(
+                os.path.dirname(os.path.dirname(os.path.dirname(xml_path))),
+                "HTML",
+            )
+
+        self.output_dir = output_dir
         os.makedirs(self.output_dir, exist_ok=True)
 
         base = os.path.splitext(os.path.basename(xml_path))[0]
         self.html_path = os.path.join(self.output_dir, base + ".html")
 
+        self.output_dir = os.path.abspath(output_dir)
+        os.makedirs(self.output_dir, exist_ok=True)
+
+        base = os.path.splitext(os.path.basename(xml_path))[0]
+        self.html_path = os.path.join(self.output_dir, base + ".html")
 
     def xml_to_html_tree(self, elem, indent=0):
 
@@ -32,26 +42,18 @@ class JPK2HTML:
 
         name = localname(elem.tag)
 
-        html_parts.append(
-            f'{pad}<span style="color:{TAG_COLOR};">&lt;{escape(name)}</span>'
-        )
+        html_parts.append(f'{pad}<span style="color:{TAG_COLOR};">&lt;{escape(name)}</span>')
 
         if elem.attrib:
             for k, v in elem.attrib.items():
-                html_parts.append(
-                    f' <span style="font-weight:bold;">{escape(k)}="{escape(v)}"</span>'
-                )
+                html_parts.append(f' <span style="font-weight:bold;">{escape(k)}="{escape(v)}"</span>')
 
-        html_parts.append(
-            f'<span style="color:{TAG_COLOR};">&gt;</span>'
-        )
+        html_parts.append(f'<span style="color:{TAG_COLOR};">&gt;</span>')
 
         text = (elem.text or "").strip()
 
         if text:
-            html_parts.append(
-                f' <span style="font-weight:bold;">{escape(text)}</span>'
-            )
+            html_parts.append(f' <span style="font-weight:bold;">{escape(text)}</span>')
 
         children = list(elem)
 
@@ -60,22 +62,15 @@ class JPK2HTML:
             html_parts.append("<br>")
 
             for child in children:
-                html_parts.append(
-                    self.xml_to_html_tree(child, indent + 1)
-                )
+                html_parts.append(self.xml_to_html_tree(child, indent + 1))
 
-            html_parts.append(
-                f'{pad}<span style="color:{TAG_COLOR};">&lt;/{escape(name)}&gt;</span><br>'
-            )
+            html_parts.append(f'{pad}<span style="color:{TAG_COLOR};">&lt;/{escape(name)}&gt;</span><br>')
 
         else:
 
-            html_parts.append(
-                f'<span style="color:{TAG_COLOR};">&lt;/{escape(name)}&gt;</span><br>'
-            )
+            html_parts.append(f'<span style="color:{TAG_COLOR};">&lt;/{escape(name)}&gt;</span><br>')
 
         return "".join(html_parts)
-
 
     def convert(self):
 
