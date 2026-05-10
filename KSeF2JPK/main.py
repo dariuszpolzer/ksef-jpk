@@ -14,6 +14,7 @@ from ksef2jpk.generator.jpk_generator import JPKGeneratorPRO
 from ksef2jpk.mapper.jpk_mapper import JPKMapperPRO
 from ksef2jpk.parser.ksef_parser import KSeFParser
 from ksef2jpk.utils.batch_loader import get_invoices_dir
+from ksef2jpk.utils.dedup import get_document_dedup_key
 from ksef2jpk.utils.jpk2html import JPK2HTML
 from ksef2jpk.utils.policz_xml_w_katalogu import policz_xml_w_katalogu
 from ksef2jpk.utils.string_tools import safe_filename
@@ -358,6 +359,10 @@ def write_quality_csv(output_path, parsed_records, mapped_rows):
     print(f"[OK] Raport jakości CSV: {output_path}")
 
 
+def get_document_dedup_key(faktura):
+    return faktura.nr_ksef or faktura.meta.get("nr_ksef") or faktura.meta.get("numer")
+
+
 # ------------------------------------------------------------
 # MAIN
 # ------------------------------------------------------------
@@ -438,18 +443,16 @@ def main():
                         f"[POMINIĘTO] {filename} | " f"typ={faktura.meta.get('typ')!r} | " f"data_filtra={skip_date!r}"
                     )
                     continue
-            dedup_key = faktura.nr_ksef or faktura.meta.get("nr_ksef") or faktura.meta.get("numer")
+            # dedup_key = faktura.nr_ksef or faktura.meta.get("nr_ksef") or faktura.meta.get("numer")
+            dedup_key = get_document_dedup_key(faktura)
             if dedup_key in seen_documents:
-                print(
-                    f"[POMINIĘTO DUPLIKAT] {filename} | "
-                    f"klucz={dedup_key!r}"
-                    )
+                print(f"[POMINIĘTO DUPLIKAT] {filename} | " f"klucz={dedup_key!r}")
                 quality_stats["duplicates_skipped"] += 1
                 continue
 
             seen_documents.add(dedup_key)
             faktury.append(faktura)
-                    
+
             parsed_records.append(
                 {
                     "filename": filename,
