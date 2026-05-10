@@ -8,6 +8,36 @@ from ksef2jpk.utils.ksef_number import extract_ksef_number_from_filename
 
 
 class KSeFParser:
+    EU_COUNTRIES = {
+        "AT",
+        "BE",
+        "BG",
+        "CY",
+        "CZ",
+        "DE",
+        "DK",
+        "EE",
+        "ES",
+        "FI",
+        "FR",
+        "GR",
+        "HR",
+        "HU",
+        "IE",
+        "IT",
+        "LT",
+        "LU",
+        "LV",
+        "MT",
+        "NL",
+        "PL",
+        "PT",
+        "RO",
+        "SE",
+        "SI",
+        "SK",
+    }
+
     def __init__(self, my_nip: str):
         self.MY_NIP = str(my_nip or "").strip()
 
@@ -403,19 +433,13 @@ class KSeFParser:
                     procedury.append("OO")
                     vat_dec = Decimal("0.00")
 
-            kraj_kontrahenta = (
-                meta.get("kraj_nabywcy")
-                if typ == "sprzedaz"
-                else meta.get("kraj_sprzedawcy")
-            )
+            kraj_kontrahenta = meta.get("kraj_nabywcy") if typ == "sprzedaz" else meta.get("kraj_sprzedawcy")
 
-            if (
-                typ == "sprzedaz"
-                and stawka == 0
-                and kraj_kontrahenta
-                and kraj_kontrahenta != "PL"
-            ):
-                procedury.append("WDT")
+            if typ == "sprzedaz" and stawka == 0 and kraj_kontrahenta and kraj_kontrahenta != "PL":
+                if kraj_kontrahenta in self.EU_COUNTRIES:
+                    procedury.append("WDT")
+                else:
+                    procedury.append("EXP")
 
             netto_dec, vat_dec = self._normalize_correction_sign(
                 netto_dec,
@@ -435,7 +459,6 @@ class KSeFParser:
                     procedury=procedury or None,
                 )
             )
-
 
         meta["liczba_pozycji"] = len(pozycje)
         meta["netto_razem"] = round(sum((p.netto or 0) for p in pozycje), 2)

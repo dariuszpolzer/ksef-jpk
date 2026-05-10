@@ -136,6 +136,7 @@ def test_generated_jpk_with_kor_oo_imp_passes_xsd_validation(tmp_path):
     assert output_xml.exists()
     assert validate_jpk(str(output_xml), str(xsd_path)) is True
 
+
 def test_generated_jpk_with_wdt_passes_xsd_validation(tmp_path):
     xsd_path = Path("validator/JPK_V7M_3.xsd")
 
@@ -184,6 +185,63 @@ def test_generated_jpk_with_wdt_passes_xsd_validation(tmp_path):
     jpk_model = dict_to_jpk_model(jpk_dict)
 
     output_xml = tmp_path / "jpk_wdt.xml"
+
+    generator = JPKGeneratorPRO()
+    generator.generate(jpk_model, str(output_xml))
+
+    assert validate_jpk(str(output_xml), str(xsd_path)) is True
+
+
+def test_generated_jpk_with_export_exp_passes_xsd_validation(tmp_path):
+    xsd_path = Path("validator/JPK_V7M_3.xsd")
+
+    if not xsd_path.exists():
+        xsd_path = Path("ksef2jpk/validator/JPK_V7M_3.xsd")
+
+    assert xsd_path.exists()
+
+    sprzedaz = [
+        WierszEwidencji(
+            typ="sprzedaz",
+            kontrahent_nip="GB123456789",
+            kontrahent_nazwa="UK Buyer",
+            nr_ksef="",
+            dokument="EXP/1/2026",
+            data_wystawienia="2026-04-01",
+            data_sprzedazy="2026-04-01",
+            netto=15000,
+            vat=0,
+            stawka=0,
+            procedury=["EXP"],
+        )
+    ]
+
+    builder = JPKBuilderPROPlus(
+        rok=2026,
+        miesiac=4,
+        podmiot={
+            "nip": "6791444505",
+            "nazwa": "Dariusz Polzer",
+            "kod_urzedu": "1214",
+            "email": "test@example.com",
+            "telefon": "123456789",
+            "data_urodzenia": "1980-01-01",
+        },
+    )
+
+    jpk_dict = builder.build(sprzedaz, [])
+
+    deklaracja = jpk_dict["Deklaracja"]["PozycjeSzczegolowe"]
+
+    assert deklaracja["P_29"] == 15000
+
+    row = jpk_dict["Ewidencja"]["SprzedazWiersz"][0]
+
+    assert row["Eksport"] == "1"
+
+    jpk_model = dict_to_jpk_model(jpk_dict)
+
+    output_xml = tmp_path / "jpk_exp.xml"
 
     generator = JPKGeneratorPRO()
     generator.generate(jpk_model, str(output_xml))

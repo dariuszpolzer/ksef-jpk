@@ -193,10 +193,16 @@ class JPKGeneratorPRO:
             "P_ORDZU",
         ]:
             val = getattr(jpk_model.deklaracja, pole, None)
-            if pole == "P_32" and not self.is_zeroish(getattr(jpk_model.deklaracja, "P_31", 0)):
+
+            if pole == "P_26" and not self.is_zeroish(getattr(jpk_model.deklaracja, "P_25", 0)):
                 ET.SubElement(poz, f"{{{ns_jpk}}}{pole}").text = "0"
                 continue
-            if pole == "P_26" and not self.is_zeroish(getattr(jpk_model.deklaracja, "P_25", 0)):
+
+            if pole == "P_30" and not self.is_zeroish(getattr(jpk_model.deklaracja, "P_29", 0)):
+                ET.SubElement(poz, f"{{{ns_jpk}}}{pole}").text = "0"
+                continue
+
+            if pole == "P_32" and not self.is_zeroish(getattr(jpk_model.deklaracja, "P_31", 0)):
                 ET.SubElement(poz, f"{{{ns_jpk}}}{pole}").text = "0"
                 continue
 
@@ -255,8 +261,8 @@ class JPKGeneratorPRO:
                 self.add_gtu_flag(sw, ns_jpk, getattr(w, "GTU", None))
 
                 # procedury / oznaczenia
-                #self.add_if_present(sw, ns_jpk, "WDT", getattr(w, "WDT", None))
-                self.add_if_present(sw, ns_jpk, "Eksport", getattr(w, "Eksport", None))
+                # self.add_if_present(sw, ns_jpk, "WDT", getattr(w, "WDT", None))
+                # self.add_if_present(sw, ns_jpk, "Eksport", getattr(w, "Eksport", None))
                 # self.add_if_present(sw, ns_jpk, "OO", getattr(w, "OO", None))
                 # self.add_if_present(sw, ns_jpk, "MPP", getattr(w, "MPP", None))
                 self.add_if_present(sw, ns_jpk, "Marza", getattr(w, "Marza", None))
@@ -272,7 +278,7 @@ class JPKGeneratorPRO:
                 self.add_if_nonzero(sw, ns_jpk, "K_24", getattr(w, "K_24", 0))
                 self.add_if_nonzero(sw, ns_jpk, "K_27", getattr(w, "K_27", 0))
 
-                if getattr(w, "WDT", None):
+                if getattr(w, "WDT", None) or getattr(w, "Eksport", None):
                     ET.SubElement(sw, f"{{{ns_jpk}}}K_28").text = "0"
                 else:
                     self.add_if_nonzero(sw, ns_jpk, "K_28", getattr(w, "K_28", 0))
