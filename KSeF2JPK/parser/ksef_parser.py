@@ -57,6 +57,13 @@ class KSeFParser:
         ]
         return self._find_text_first(root, candidates, ns)
 
+    def _podmiot_kraj(self, root, podmiot_tag, ns):
+        candidates = [
+            f".//fa:{podmiot_tag}/fa:Adres/fa:KodKraju",
+            f".//fa:{podmiot_tag}//fa:KodKraju",
+        ]
+        return self._find_text_first(root, candidates, ns) or "PL"
+
     def _normalize_stawka(self, raw):
         return (raw or "").strip().upper()
 
@@ -293,7 +300,7 @@ class KSeFParser:
             ns,
         )
         sprzedawca_nazwa = self._podmiot_nazwa(root, "Podmiot1", ns)
-
+        sprzedawca_kraj = self._podmiot_kraj(root, "Podmiot1", ns)
         nabywca_nip = self._find_text_first(
             root,
             [
@@ -303,13 +310,13 @@ class KSeFParser:
             ns,
         )
         nabywca_nazwa = self._podmiot_nazwa(root, "Podmiot2", ns)
-
+        nabywca_kraj = self._podmiot_kraj(root, "Podmiot2", ns)
         if sprzedawca_nip == self.MY_NIP:
             typ = "sprzedaz"
-            kontr = Kontrahent(nip=nabywca_nip, nazwa=nabywca_nazwa)
+            kontr = Kontrahent(nip=nabywca_nip, nazwa=nabywca_nazwa, kraj=nabywca_kraj)
         elif nabywca_nip == self.MY_NIP:
             typ = "zakup"
-            kontr = Kontrahent(nip=sprzedawca_nip, nazwa=sprzedawca_nazwa)
+            kontr = Kontrahent(nip=sprzedawca_nip, nazwa=sprzedawca_nazwa, kraj=sprzedawca_kraj)
         else:
             typ = "nieznany"
             kontr = Kontrahent(nip="", nazwa="")
@@ -321,9 +328,10 @@ class KSeFParser:
 
         meta["nip_sprzedawcy"] = sprzedawca_nip
         meta["nazwa_sprzedawcy"] = sprzedawca_nazwa
+        meta["kraj_sprzedawcy"] = sprzedawca_kraj
         meta["nip_nabywcy"] = nabywca_nip
         meta["nazwa_nabywcy"] = nabywca_nazwa
-
+        meta["kraj_nabywcy"] = nabywca_kraj
         meta["nr_ksef"] = nr_ksef or ""
         meta["numer"] = numer or ""
 
@@ -395,6 +403,20 @@ class KSeFParser:
                     procedury.append("OO")
                     vat_dec = Decimal("0.00")
 
+            kraj_kontrahenta = (
+                meta.get("kraj_nabywcy")
+                if typ == "sprzedaz"
+                else meta.get("kraj_sprzedawcy")
+            )
+
+            if (
+                typ == "sprzedaz"
+                and stawka == 0
+                and kraj_kontrahenta
+                and kraj_kontrahenta != "PL"
+            ):
+                procedury.append("WDT")
+
             netto_dec, vat_dec = self._normalize_correction_sign(
                 netto_dec,
                 vat_dec,
@@ -413,6 +435,7 @@ class KSeFParser:
                     procedury=procedury or None,
                 )
             )
+
 
         meta["liczba_pozycji"] = len(pozycje)
         meta["netto_razem"] = round(sum((p.netto or 0) for p in pozycje), 2)

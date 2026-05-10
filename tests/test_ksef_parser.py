@@ -263,3 +263,53 @@ def test_parser_handles_oo_procedure(tmp_path):
     assert p.vat == 0.0
     assert p.stawka is None
     assert "OO" in (p.procedury or [])
+
+def test_parser_detects_wdt(tmp_path):
+    xml = """<?xml version="1.0" encoding="UTF-8"?>
+    <Faktura xmlns="http://crd.gov.pl/wzor/2025/06/25/13775/">
+      <Podmiot1>
+        <DaneIdentyfikacyjne>
+          <NIP>6791444505</NIP>
+          <Nazwa>Test Seller</Nazwa>
+        </DaneIdentyfikacyjne>
+        <Adres>
+          <KodKraju>PL</KodKraju>
+        </Adres>
+      </Podmiot1>
+
+      <Podmiot2>
+        <DaneIdentyfikacyjne>
+          <NIP>DE123456789</NIP>
+          <Nazwa>EU Buyer</Nazwa>
+        </DaneIdentyfikacyjne>
+        <Adres>
+          <KodKraju>DE</KodKraju>
+        </Adres>
+      </Podmiot2>
+
+      <Fa>
+        <P_1>2026-04-01</P_1>
+        <P_2>WDT/1/2026</P_2>
+        <P_6>2026-04-01</P_6>
+
+        <FaWiersz>
+          <P_7>Export service</P_7>
+          <P_11>10000</P_11>
+          <P_12>0</P_12>
+        </FaWiersz>
+      </Fa>
+    </Faktura>
+    """
+
+    xml_file = tmp_path / "wdt.xml"
+    xml_file.write_text(xml, encoding="utf-8")
+
+    parser = KSeFParser("6791444505")
+    faktura = parser.parse(str(xml_file))
+
+    assert len(faktura.pozycje) == 1
+
+    p = faktura.pozycje[0]
+
+    assert p.stawka == 0.0
+    assert "WDT" in (p.procedury or [])

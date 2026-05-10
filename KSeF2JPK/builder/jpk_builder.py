@@ -238,7 +238,7 @@ class JPKBuilderPROPlus:
                     "K_23": w.netto if w.stawka == 5 else 0,
                     "K_24": w.vat if w.stawka == 5 else 0,
                     "K_27": w.netto if w.stawka == 0 else 0,
-                    "K_28": 0,
+                    "K_28": 0 if "WDT" in set(w.procedury or []) else 0,
                 }
             )
 
