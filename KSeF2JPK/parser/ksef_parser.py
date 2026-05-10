@@ -3,6 +3,7 @@ from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 
 from defusedxml import ElementTree as ET
 
+from ksef2jpk.classifier.gtu_classifier import GTUClassifier
 from ksef2jpk.model.faktura_model import FakturaModel, Kontrahent, Pozycja
 from ksef2jpk.utils.ksef_number import extract_ksef_number_from_filename
 
@@ -40,6 +41,7 @@ class KSeFParser:
 
     def __init__(self, my_nip: str):
         self.MY_NIP = str(my_nip or "").strip()
+        self.gtu_classifier = GTUClassifier()
 
     def _text(self, el):
         if el is None or el.text is None:
@@ -410,7 +412,8 @@ class KSeFParser:
             stawka_dec = self._decimal_or_none(stawka_txt)
 
             procedury = list(meta.get("procedury", []))
-            gtu = None
+
+            gtu = self.gtu_classifier.classify(nazwa)
 
             if stawka_dec is not None:
                 stawka = float(stawka_dec)

@@ -19,6 +19,8 @@ class Pozycja:
     stawka: float | None = None
     gtu: str | None = None
     procedury: list[str] | None = None
+    gtu_manual: str | None = None
+    procedury_manual: list[str] | None = None
 
 
 @dataclass

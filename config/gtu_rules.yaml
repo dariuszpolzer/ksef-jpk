@@ -1,0 +1,29 @@
+GTU_06:
+  - laptop
+  - telefon
+  - smartfon
+  - komputer
+  - tablet
+
+GTU_07:
+  - samochód
+  - pojazd
+  - motocykl
+
+GTU_12:
+  - consulting
+  - doradztwo
+  - marketing
+  - reklama
+  - programistyczne
+  - księgowość
+  - licencja
+  - saas
+  - ebook
+
+PROCEDURY:
+  MPP:
+    - mechanizm podzielonej płatności
+
+  TP:
+    - podmiot powiązany

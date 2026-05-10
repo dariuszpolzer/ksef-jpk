@@ -51,7 +51,7 @@ class JPKMapperPRO:
             vat = round(sum((p.vat or 0) for p in grupa_pozycji), 2)
 
             # GTU z pozycji
-            gtu_values = sorted({p.gtu for p in grupa_pozycji if p.gtu})
+            gtu_values = sorted({(p.gtu_manual or p.gtu) for p in grupa_pozycji if (p.gtu_manual or p.gtu)})
 
             if len(gtu_values) == 1:
                 gtu = gtu_values[0]
@@ -63,7 +63,9 @@ class JPKMapperPRO:
                 gtu = meta_gtu
 
             # Procedury z pozycji
-            procedury_from_positions = sorted({proc for p in grupa_pozycji for proc in (p.procedury or []) if proc})
+            procedury_from_positions = sorted(
+                {proc for p in grupa_pozycji for proc in ((p.procedury_manual or p.procedury) or []) if proc}
+            )
 
             if procedury_from_positions:
                 procedury = procedury_from_positions

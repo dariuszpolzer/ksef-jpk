@@ -366,3 +366,47 @@ def test_parser_detects_export_exp(tmp_path):
     assert p.stawka == 0.0
     assert "EXP" in (p.procedury or [])
     assert "WDT" not in (p.procedury or [])
+
+
+def test_parser_detects_gtu_06(tmp_path):
+    xml = """<?xml version="1.0" encoding="UTF-8"?>
+    <Faktura xmlns="http://crd.gov.pl/wzor/2025/06/25/13775/">
+      <Podmiot1>
+        <DaneIdentyfikacyjne>
+          <NIP>6791444505</NIP>
+          <Nazwa>Seller</Nazwa>
+        </DaneIdentyfikacyjne>
+      </Podmiot1>
+
+      <Podmiot2>
+        <DaneIdentyfikacyjne>
+          <NIP>5250001001</NIP>
+          <Nazwa>Buyer</Nazwa>
+        </DaneIdentyfikacyjne>
+      </Podmiot2>
+
+      <Fa>
+        <P_1>2026-04-01</P_1>
+        <P_2>FV/GTU/1</P_2>
+        <P_6>2026-04-01</P_6>
+
+        <FaWiersz>
+          <P_7>Sprzedaż laptop gamingowy</P_7>
+          <P_11>10000</P_11>
+          <P_12>23</P_12>
+        </FaWiersz>
+      </Fa>
+    </Faktura>
+    """
+
+    xml_file = tmp_path / "gtu.xml"
+    xml_file.write_text(xml, encoding="utf-8")
+
+    parser = KSeFParser("6791444505")
+    faktura = parser.parse(str(xml_file))
+
+    assert len(faktura.pozycje) == 1
+
+    p = faktura.pozycje[0]
+
+    assert p.gtu == "GTU_06"
