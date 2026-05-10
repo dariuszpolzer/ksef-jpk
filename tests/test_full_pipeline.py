@@ -177,3 +177,79 @@ def test_full_pipeline_korekta_to_zero(tmp_path):
     assert sprzedaz_wiersz["K_20"] == -3565.0
     assert ewidencja["SprzedazCtrl"]["LiczbaWierszySprzedazy"] == 1
     assert ewidencja["SprzedazCtrl"]["PodatekNalezny"] == -3565.0
+
+
+def test_mpp_is_detected_but_not_emitted_in_jpk_xml(tmp_path):
+    xml = """<?xml version="1.0" encoding="UTF-8"?>
+    <Faktura xmlns="http://crd.gov.pl/wzor/2025/06/25/13775/">
+      <Podmiot1>
+        <DaneIdentyfikacyjne>
+          <NIP>6791444505</NIP>
+          <Nazwa>Test Seller</Nazwa>
+        </DaneIdentyfikacyjne>
+      </Podmiot1>
+
+      <Podmiot2>
+        <DaneIdentyfikacyjne>
+          <NIP>1234567890</NIP>
+          <Nazwa>Test Buyer</Nazwa>
+        </DaneIdentyfikacyjne>
+      </Podmiot2>
+
+      <Fa>
+        <P_1>2026-03-24</P_1>
+        <P_2>FV/MPP/1</P_2>
+        <P_6>2026-03-24</P_6>
+
+        <Adnotacje>
+          <MPP>1</MPP>
+        </Adnotacje>
+
+        <FaWiersz>
+          <P_7>Usługa MPP</P_7>
+          <P_11>20000</P_11>
+          <P_12>23</P_12>
+        </FaWiersz>
+      </Fa>
+    </Faktura>
+    """
+
+    xml_file = tmp_path / "mpp.xml"
+    xml_file.write_text(xml, encoding="utf-8")
+
+    parser = KSeFParser("6791444505")
+    faktura = parser.parse(str(xml_file))
+
+    assert faktura.meta["mpp"] is True
+    assert "MPP" in faktura.meta["procedury"]
+
+    mapper = JPKMapperPRO()
+    rows = mapper.map(faktura)
+
+    assert len(rows) == 1
+    assert "MPP" in rows[0].procedury
+
+    builder = JPKBuilderPROPlus(
+        rok=2026,
+        miesiac=3,
+        podmiot={
+            "nip": "6791444505",
+            "nazwa": "Dariusz Polzer",
+            "kod_urzedu": "1214",
+        },
+    )
+
+    jpk_dict = builder.build(rows, [])
+
+    from ksef2jpk.adapter.jpk_adapter import dict_to_jpk_model
+
+    jpk_model = dict_to_jpk_model(jpk_dict)
+
+    output_xml = tmp_path / "jpk_mpp.xml"
+    generator = JPKGeneratorPRO()
+    generator.generate(jpk_model, str(output_xml))
+
+    xml_out = output_xml.read_text(encoding="utf-8")
+
+    assert "<MPP>" not in xml_out
+    assert "</MPP>" not in xml_out

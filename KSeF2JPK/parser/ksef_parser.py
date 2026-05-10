@@ -227,6 +227,16 @@ class KSeFParser:
             ns,
         )
 
+        mpp_flag = self._find_text_first(
+            root,
+            [
+                ".//fa:Fa/fa:Adnotacje/fa:MPP",
+                ".//fa:Adnotacje/fa:MPP",
+                ".//fa:MPP",
+            ],
+            ns,
+        )
+
         przyczyna_korekty = self._find_text_first(
             root,
             [".//fa:Fa/fa:PrzyczynaKorekty", ".//fa:PrzyczynaKorekty"],
@@ -318,6 +328,7 @@ class KSeFParser:
         meta["numer"] = numer or ""
 
         meta["rodzaj_faktury"] = rodzaj_faktury
+        meta["mpp"] = str(mpp_flag).strip() == "1"
         meta["is_korekta"] = rodzaj_faktury.upper() == "KOR"
         meta["przyczyna_korekty"] = przyczyna_korekty
         meta["nr_fa_korygowanej"] = nr_fa_korygowanej
@@ -335,7 +346,8 @@ class KSeFParser:
             [".//fa:P_15"],
             ns,
         )
-
+        if meta["mpp"]:
+            meta["procedury"] = sorted(set(meta.get("procedury", []) + ["MPP"]))
         wiersze = root.findall(".//fa:FaWiersz", ns)
 
         for w in wiersze:
@@ -359,7 +371,7 @@ class KSeFParser:
             stawka_norm = self._normalize_stawka(stawka_txt)
             stawka_dec = self._decimal_or_none(stawka_txt)
 
-            procedury = []
+            procedury = list(meta.get("procedury", []))
             gtu = None
 
             if stawka_dec is not None:

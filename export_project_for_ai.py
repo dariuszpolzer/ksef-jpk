@@ -312,15 +312,6 @@ Business logic still incomplete.
 """
 
 
-
-
-
-
-
-
-
-
-
 PROJECT_ARCHITECTURE = """# PROJECT ARCHITECTURE
 
 Entry point:
@@ -654,9 +645,7 @@ def render_dependencies(deps: dict[Path, list[Path]]) -> str:
     has_any = False
 
     for file, imports in sorted(deps.items(), key=lambda item: rel_posix(item[0])):
-        visible_imports = [
-            imported_file for imported_file in imports if imported_file.name != "__init__.py"
-        ]
+        visible_imports = [imported_file for imported_file in imports if imported_file.name != "__init__.py"]
 
         if not visible_imports:
             continue
