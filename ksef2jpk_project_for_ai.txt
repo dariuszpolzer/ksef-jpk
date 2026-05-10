@@ -1,12 +1,12 @@
 # PROJECT SNAPSHOT FOR AI
 
-Generated: 2026-05-09T18:08:10
+Generated: 2026-05-10T10:14:32
 Root: ksef-jpk
-Files included: 48
+Files included: 55
 Directories skipped: 17
-Files skipped: 8
-Total skipped paths: 25
-Total lines: 4316
+Files skipped: 9
+Total skipped paths: 26
+Total lines: 5800
 
 # INSTRUKCJE DLA AI
 
@@ -32,6 +32,39 @@ Ważne:
 # CURRENT STATUS
 
 ## Completed
+
+### Monthly orchestration
+- PowerShell monthly orchestrator implemented
+- End-to-end automation:
+  - ksef-sync
+  - validation/tests
+  - JPK generation
+  - HTML preview
+  - CSV quality reports
+  - monthly HTML report
+- Dry-run support implemented
+- Artifact archiving implemented
+
+---
+
+### Data quality reporting
+- CSV quality report implemented
+- HTML quality dashboard implemented
+- Reporting includes:
+  - GTU
+  - procedures
+  - validation warnings
+  - totals consistency
+  - correction detection
+
+---
+
+### Deduplication
+- Duplicate invoice detection implemented
+- NrKSeF-based deduplication implemented
+- Duplicate skipping statistics implemented
+
+---
 
 ### Core architecture
 - Modular pipeline architecture implemented
@@ -129,8 +162,12 @@ Ważne:
 ### Corrections handling
 - Detection of KOR invoices implemented
 - Correction metadata parsing implemented
-- Corrections reporting implemented
-- Corrections exclusion from JPK currently implemented intentionally
+- StanPrzed handling implemented
+- KOR values normalized to negative JPK values
+- KOR included in JPK pipeline
+- KOR totals validation adjusted to avoid false warnings
+- Parser and end-to-end KOR tests implemented
+- Broader correction scenarios still require validation
 
 ---
 
@@ -155,6 +192,10 @@ Ważne:
 - Full pipeline smoke test implemented
 - Batch loader tests implemented
 - Utility tests implemented
+- XSD validation regression tests implemented
+- KOR, MPP, OO, IMP, WDT, EXP tests implemented
+- Deduplication tests implemented
+- GTU classifier tests implemented
 
 ---
 
@@ -172,7 +213,10 @@ Ważne:
 ### GTU and procedure classification
 - Initial heuristic engine implemented
 - MPP/WDT/EXP/OO/GTU candidates supported
-- Requires deterministic business rules
+- YAML-based GTU rules implemented
+- Manual GTU/procedure override implemented
+- Default GTU fallback rules implemented
+- Requires deterministic business review for production tax correctness
 
 ---
 
@@ -188,39 +232,28 @@ Ważne:
 
 ---
 
-## In Progress
-
-### KOR correction support
-- Detection implemented
-- Full accounting logic not implemented yet
-
----
-
 ### Input validation subsystem
-Planned:
-- NIP validation
-- date validation
-- required fields validation
-- VAT consistency validation
+- NIP validation implemented
+- ISO date validation implemented
+- Required field warnings implemented
+- Validation warnings exposed in quality reports
 
 ---
 
 ### Reverse charge / import services
-Partial placeholders exist:
-- IMP
-- OO
-- K_45–K_47
-
-Business logic still incomplete.
+- OO detection implemented
+- IMP handling implemented in purchase evidence/declaration model
+- WDT and EXP classification implemented
+- Advanced cross-border VAT scenarios still require tax review
 
 ---
 
 ## Next Priority Targets
 
 ### P1 — Critical
-1. Full correction accounting (KOR)
-2. Input validation engine
-3. Reverse charge / import services
+1. Broader correction accounting scenarios
+2. Domain validation engine
+3. Reverse charge / import services hardening
 4. GTU/procedure hardening
 
 ---
@@ -243,9 +276,9 @@ Business logic still incomplete.
 
 ## Known Architectural Risks
 
-- Corrections currently excluded from JPK
+- KOR support currently covers tested correction-to-zero cases; broader correction types still require validation
 - GTU classification may generate false positives
-- MPP heuristic is too aggressive
+- MPP heuristic may be too aggressive
 - Company entities not yet handled separately from OsobaFizyczna
 - Excessive dict usage in builder layer
 - main.py becoming orchestration-heavy
@@ -261,11 +294,10 @@ Business logic still incomplete.
 | XML generation | Stable MVP |
 | XSD validation | Stable MVP |
 | Tax correctness | Partial |
-| Corrections support | Incomplete |
+| Corrections support | Partial |
 | GTU accuracy | Experimental |
-| Integration tests | Limited |
+| Integration tests | Growing |
 | Production readiness | Controlled/internal use only |
-
 
 
 # PROJECT CONTEXT
@@ -277,7 +309,7 @@ Purpose:
 Local Python CLI tool for generating JPK_V7M XML from invoice XML files downloaded from KSeF.
 
 Business purpose:
-Preparing Polish VAT/JPK reporting data based on KSeF invoice XML files for "small buissnes".
+Preparing Polish VAT/JPK reporting data based on KSeF invoice XML files for small business.
 
 Inputs:
 - KSeF invoice XML files
@@ -290,6 +322,9 @@ Outputs:
 - HTML preview of generated JPK
 - console quality report
 - validation result against XSD
+- CSV quality report
+- monthly HTML dashboard
+- archived monthly reporting package
 
 Type:
 CLI / local automation tool.
@@ -298,7 +333,7 @@ Main entrypoint:
 ksef2jpk/main.py
 
 Typical run:
-py -3.11 -m ksef2jpk.main --year 2026 --month 4
+python -m ksef2jpk.main --year 2026 --month 4
 
 Status:
 Personal/local business tool in active development.
@@ -322,23 +357,28 @@ Main domains:
 - GTU and procedure classification
 - invoice period filtering
 - correction detection/reporting
+- deduplication
 - mapping invoices to JPK evidence rows
 - building JPK declaration and evidence structure
 - adapting dictionaries to JPK model classes
 - generating JPK_V7M XML
 - validating XML against XSD
 - generating HTML preview
+- CSV quality reporting
+- monthly reporting dashboard
 - console quality report
 
 Core files:
 - ksef2jpk/main.py
 - ksef2jpk/parser/ksef_parser.py
 - ksef2jpk/classifier/jpk_flags.py
+- ksef2jpk/classifier/gtu_classifier.py
 - ksef2jpk/mapper/jpk_mapper.py
 - ksef2jpk/builder/jpk_builder.py
 - ksef2jpk/adapter/jpk_adapter.py
 - ksef2jpk/generator/jpk_generator.py
 - ksef2jpk/validator/validate_jpk.py
+- ksef2jpk/utils/dedup.py
 
 
 # DATA FLOW
@@ -351,11 +391,13 @@ ksef2jpk/parser/ksef_parser.py
     ↓
 FakturaModel
     ↓
-ksef2jpk/classifier/jpk_flags.py
+ksef2jpk/classifier/jpk_flags.py and gtu_classifier.py
     ↓
 GTU/procedure candidates
     ↓
 date filter for selected JPK year/month
+    ↓
+deduplication
     ↓
 correction detection/reporting
     ↓
@@ -384,9 +426,210 @@ XSD validation result
 ksef2jpk/utils/jpk2html.py
     ↓
 HTML preview
+    ↓
+quality CSV report
+    ↓
+monthly HTML dashboard
+    ↓
+archived reporting package
 
+
+# BUILD / TOOLING CONTEXT
+
+## pyproject.toml
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ksef-jpk"
+version = "0.1.0"
+description = "KSeF → JPK automation toolkit"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+    { name = "Dariusz Polzer" }
+]
+
+# Twoje zależności runtime (jeśli jakieś masz)
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "ruff",
+    "black",
+    "bandit",
+]
+
+[tool.setuptools]
+package-dir = {"" = "."}
+
+[tool.setuptools.packages.find]
+where = ["."]
+
+# -----------------------------------------
+# PYTEST
+# -----------------------------------------
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+norecursedirs = ["venv"]
+testpaths = ["tests"]
+
+# -----------------------------------------
+# RUFF
+# -----------------------------------------
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+src = ["src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = []
+
+# -----------------------------------------
+# BLACK
+# -----------------------------------------
+[tool.black]
+line-length = 120
+target-version = ["py311"]
+
+# -----------------------------------------
+# BANDIT
+# -----------------------------------------
+[tool.bandit]
+exclude_dirs = ["venv"]
+skips = ["B101", "B404", "B603", "B607", "B110", "B112"]
+
+## requirements.txt
+
+colorama==0.4.6
+defusedxml==0.7.1
+iniconfig==2.3.0
+lxml==5.3.0
+packaging==26.2
+pathspec==0.12.1
+pluggy==1.6.0
+Pygments==2.20.0
+pytest==9.0.3
+defusedxml>=0.7
+pytest>=9.0
+ruff
+black
+bandit
+
+## pytest.ini
+
+[pytest]
+norecursedirs = venv
+pythonpath = .
+
+## .bandit
+
+[bandit]
+recursive = True
+
+exclude =
+    outbound,
+    tools,
+    __pycache__,
+    validator/xsd
+
+skips = B101,B404,B603,B607,B110,B112
+
+## check.ps1
+
+# ============================================
+# CHECK.PS1 — testy + lint + format + security
+# ============================================
+
+$ErrorActionPreference = "Stop"
+
+$src = "ksef2jpk"
+$tests = "tests"
+
+if (-not (Test-Path $src)) {
+    Write-Host "Źródło nie istnieje: $src" -ForegroundColor Red
+    exit 1
+}
+
+if (-not (Test-Path $tests)) {
+    Write-Host "Katalog testów nie istnieje: $tests" -ForegroundColor Red
+    exit 1
+}
+
+Write-Host "=== PYTEST ===" -ForegroundColor Cyan
+python -m pytest -v
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "`nPYTEST FAILED ❌" -ForegroundColor Red
+    exit $LASTEXITCODE
+}
+
+Write-Host "`n=== RUFF ===" -ForegroundColor Cyan
+python -m ruff check $src $tests
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "`nRUFF FAILED ❌" -ForegroundColor Red
+    exit $LASTEXITCODE
+}
+
+Write-Host "`n=== BLACK (check) ===" -ForegroundColor Cyan
+python -m black --check $src $tests
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "`nBLACK FAILED ❌" -ForegroundColor Red
+    exit $LASTEXITCODE
+}
+
+Write-Host "`n=== BANDIT ===" -ForegroundColor Cyan
+python -m bandit -r $src
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "`nBANDIT FAILED ❌" -ForegroundColor Red
+    exit $LASTEXITCODE
+}
+
+Write-Host "`n============================================" -ForegroundColor Green
+Write-Host "Wszystkie testy zakończone sukcesem ✔️" -ForegroundColor Green
+Write-Host "============================================" -ForegroundColor Green
+
+exit 0
+
+## fix.ps1
+
+# ============================================
+# FIX.PS1 — automatyczne poprawki
+# ============================================
+
+$ErrorActionPreference = "Stop"
+
+Write-Host "=== BLACK ===" -ForegroundColor Cyan
+python -m black ksef2jpk tests
+
+Write-Host "`n=== RUFF FIX ===" -ForegroundColor Cyan
+python -m ruff check ksef2jpk tests --fix
+
+Write-Host "`nGotowe ✔️" -ForegroundColor Green
+
+
+# SECRET / SENSITIVE DATA WARNINGS
+
+Potential sensitive patterns detected. Review before sharing externally.
+
+- README.md: possible_polish_nip
+- config_example.json: possible_polish_nip
+- ksef2jpk/utils/ksef_number.py: possible_polish_nip
+- tests/test_full_pipeline.py: possible_polish_nip
+- tests/test_jpk_builder.py: possible_polish_nip
+- tests/test_jpk_mapper.py: possible_polish_nip
+- tests/test_ksef_number.py: possible_polish_nip
+- tests/test_ksef_parser.py: possible_polish_nip
+- tests/test_xsd_validation.py: possible_polish_nip
 
 # MODULE DEPENDENCIES
+
+ksef2jpk/__main__.py
+  └── ksef2jpk/main.py
 
 ksef2jpk/adapter/jpk_adapter.py
   └── ksef2jpk/model/jpk_model.py
@@ -404,6 +647,7 @@ ksef2jpk/main.py
   └── ksef2jpk/mapper/jpk_mapper.py
   └── ksef2jpk/parser/ksef_parser.py
   └── ksef2jpk/utils/batch_loader.py
+  └── ksef2jpk/utils/dedup.py
   └── ksef2jpk/utils/jpk2html.py
   └── ksef2jpk/utils/policz_xml_w_katalogu.py
   └── ksef2jpk/utils/string_tools.py
@@ -416,17 +660,26 @@ ksef2jpk/model/jpk_model.py
   └── ksef2jpk/model/deklaracja_model.py
 
 ksef2jpk/parser/ksef_parser.py
+  └── ksef2jpk/classifier/gtu_classifier.py
   └── ksef2jpk/model/faktura_model.py
   └── ksef2jpk/utils/ksef_number.py
 
 tests/test_batch_loader.py
   └── ksef2jpk/utils/batch_loader.py
 
+tests/test_deduplication.py
+  └── ksef2jpk/model/faktura_model.py
+  └── ksef2jpk/utils/dedup.py
+
 tests/test_full_pipeline.py
+  └── ksef2jpk/adapter/jpk_adapter.py
   └── ksef2jpk/builder/jpk_builder.py
   └── ksef2jpk/generator/jpk_generator.py
   └── ksef2jpk/mapper/jpk_mapper.py
   └── ksef2jpk/parser/ksef_parser.py
+
+tests/test_gtu_classifier.py
+  └── ksef2jpk/classifier/gtu_classifier.py
 
 tests/test_jpk_builder.py
   └── ksef2jpk/builder/jpk_builder.py
@@ -445,6 +698,685 @@ tests/test_ksef_parser.py
 tests/test_string_tools.py
   └── ksef2jpk/utils/string_tools.py
 
+tests/test_xsd_validation.py
+  └── ksef2jpk/adapter/jpk_adapter.py
+  └── ksef2jpk/builder/jpk_builder.py
+  └── ksef2jpk/generator/jpk_generator.py
+  └── ksef2jpk/model/jpk_model.py
+  └── ksef2jpk/validator/validate_jpk.py
+
+
+# MODULE SUMMARY
+
+ksef2jpk/main.py
+- lines: 685
+- classes: -
+- functions: load_config, parse_args, resolve_input_source, print_section, get_period_bounds, parse_iso_date, get_filter_date_for_invoice, invoice_in_period, is_candidate_input_xml, init_quality_stats, update_quality_stats, write_quality_csv, get_document_dedup_key, main
+- imports: argparse, csv, glob, json, os, traceback, datetime, pathlib, ksef2jpk.adapter.jpk_adapter, ksef2jpk.builder.jpk_builder, ksef2jpk.classifier.jpk_flags, ksef2jpk.generator.jpk_generator, ksef2jpk.mapper.jpk_mapper, ksef2jpk.parser.ksef_parser, ksef2jpk.utils.batch_loader, ksef2jpk.utils.dedup, ksef2jpk.utils.jpk2html, ksef2jpk.utils.policz_xml_w_katalogu, ksef2jpk.utils.string_tools, ksef2jpk.validator.validate_jpk, calendar
+
+ksef2jpk/__init__.py
+- lines: 0
+- classes: -
+- functions: -
+- imports: -
+
+ksef2jpk/__main__.py
+- lines: 4
+- classes: -
+- functions: -
+- imports: ksef2jpk.main
+
+ksef2jpk/adapter/__init__.py
+- lines: 0
+- classes: -
+- functions: -
+- imports: -
+
+ksef2jpk/adapter/jpk_adapter.py
+- lines: 162
+- classes: -
+- functions: dict_to_jpk_model
+- imports: ksef2jpk.model.jpk_model, ksef2jpk.model.sprzedaz_model, ksef2jpk.model.zakup_model
+
+ksef2jpk/builder/__init__.py
+- lines: 0
+- classes: -
+- functions: -
+- imports: -
+
+ksef2jpk/builder/jpk_builder.py
+- lines: 363
+- classes: JPKBuilderPROPlus
+- functions: -
+- imports: calendar, datetime, typing, ksef2jpk.model.jpk_model
+
+ksef2jpk/classifier/__init__.py
+- lines: 0
+- classes: -
+- functions: -
+- imports: -
+
+ksef2jpk/classifier/gtu_classifier.py
+- lines: 64
+- classes: GTUClassifier
+- functions: -
+- imports: pathlib, yaml
+
+ksef2jpk/classifier/jpk_flags.py
+- lines: 287
+- classes: JPKFlags, JPKFlagsClassifier
+- functions: -
+- imports: __future__, dataclasses, typing
+
+ksef2jpk/generator/__init__.py
+- lines: 0
+- classes: -
+- functions: -
+- imports: -
+
+ksef2jpk/generator/jpk_generator.py
+- lines: 371
+- classes: JPKGeneratorPRO
+- functions: -
+- imports: xml.etree.ElementTree, xml.dom
+
+ksef2jpk/mapper/__init__.py
+- lines: 0
+- classes: -
+- functions: -
+- imports: -
+
+ksef2jpk/mapper/jpk_mapper.py
+- lines: 107
+- classes: JPKMapperPRO
+- functions: -
+- imports: collections, ksef2jpk.model.jpk_model
+
+ksef2jpk/model/__init__.py
+- lines: 0
+- classes: -
+- functions: -
+- imports: -
+
+ksef2jpk/model/deklaracja_model.py
+- lines: 73
+- classes: DeklaracjaVAT7
+- functions: -
+- imports: dataclasses
+
+ksef2jpk/model/faktura_model.py
+- lines: 30
+- classes: Kontrahent, Pozycja, FakturaModel
+- functions: -
+- imports: dataclasses, typing
+
+ksef2jpk/model/jpk_model.py
+- lines: 96
+- classes: SprzedazCtrl, ZakupCtrl, JPKModel, WierszEwidencji
+- functions: -
+- imports: dataclasses, decimal, typing, ksef2jpk.model.deklaracja_model
+
+ksef2jpk/model/podatnik_model.py
+- lines: 29
+- classes: Podatnik
+- functions: -
+- imports: dataclasses
+
+ksef2jpk/model/sprzedaz_model.py
+- lines: 36
+- classes: SprzedazWiersz
+- functions: -
+- imports: dataclasses
+
+ksef2jpk/model/zakup_model.py
+- lines: 26
+- classes: ZakupWiersz
+- functions: -
+- imports: dataclasses
+
+ksef2jpk/parser/__init__.py
+- lines: 0
+- classes: -
+- functions: -
+- imports: -
+
+ksef2jpk/parser/ksef_parser.py
+- lines: 500
+- classes: KSeFParser
+- functions: -
+- imports: os, decimal, defusedxml, ksef2jpk.classifier.gtu_classifier, ksef2jpk.model.faktura_model, ksef2jpk.utils.ksef_number, datetime
+
+ksef2jpk/utils/batch_loader.py
+- lines: 35
+- classes: -
+- functions: find_latest_batch, load_batch_manifest, resolve_batch_dir, get_invoices_dir
+- imports: json, pathlib
+
+ksef2jpk/utils/dedup.py
+- lines: 2
+- classes: -
+- functions: get_document_dedup_key
+- imports: -
+
+ksef2jpk/utils/jpk2html.py
+- lines: 145
+- classes: JPK2HTML
+- functions: localname
+- imports: os, sys, html, defusedxml
+
+ksef2jpk/utils/ksef_number.py
+- lines: 45
+- classes: -
+- functions: normalize_ksef_number, is_valid_ksef_number, extract_ksef_number_from_filename
+- imports: os, re
+
+ksef2jpk/utils/policz_xml_w_katalogu.py
+- lines: 19
+- classes: -
+- functions: policz_xml_w_katalogu
+- imports: os
+
+ksef2jpk/utils/string_tools.py
+- lines: 23
+- classes: -
+- functions: safe_filename
+- imports: re, unicodedata
+
+ksef2jpk/validator/__init__.py
+- lines: 0
+- classes: -
+- functions: -
+- imports: -
+
+ksef2jpk/validator/validate_jpk.py
+- lines: 70
+- classes: LocalResolver
+- functions: validate_jpk
+- imports: pathlib, lxml, sys
+
+tests/test_batch_loader.py
+- lines: 21
+- classes: -
+- functions: test_get_invoices_dir
+- imports: json, ksef2jpk.utils.batch_loader
+
+tests/test_deduplication.py
+- lines: 41
+- classes: -
+- functions: test_get_document_dedup_key_prefers_nr_ksef, test_get_document_dedup_key_falls_back_to_meta_nr_ksef, test_get_document_dedup_key_falls_back_to_invoice_number
+- imports: ksef2jpk.model.faktura_model, ksef2jpk.utils.dedup
+
+tests/test_full_pipeline.py
+- lines: 255
+- classes: -
+- functions: test_full_pipeline, test_full_pipeline_korekta_to_zero, test_mpp_is_detected_but_not_emitted_in_jpk_xml
+- imports: ksef2jpk.builder.jpk_builder, ksef2jpk.generator.jpk_generator, ksef2jpk.mapper.jpk_mapper, ksef2jpk.parser.ksef_parser, ksef2jpk.adapter.jpk_adapter
+
+tests/test_gtu_classifier.py
+- lines: 50
+- classes: -
+- functions: test_gtu_classifier_uses_default_rules_when_config_missing, test_gtu_classifier_loads_rules_from_yaml, test_gtu_classifier_is_case_insensitive
+- imports: ksef2jpk.classifier.gtu_classifier
+
+tests/test_jpk_builder.py
+- lines: 135
+- classes: -
+- functions: test_jpk_builder_declaration_values, test_builder_marks_oo_sales_procedure, test_builder_maps_imp_purchase_to_k45_k46
+- imports: ksef2jpk.builder.jpk_builder, ksef2jpk.model.jpk_model
+
+tests/test_jpk_mapper.py
+- lines: 108
+- classes: -
+- functions: test_mapper_groups_by_vat_rate_for_sales, test_mapper_uses_manual_gtu_override, test_mapper_uses_manual_procedure_override
+- imports: ksef2jpk.mapper.jpk_mapper, ksef2jpk.model.faktura_model
+
+tests/test_ksef_number.py
+- lines: 18
+- classes: -
+- functions: test_valid_ksef_number, test_extract_ksef_number_from_filename, test_invalid_ksef_number
+- imports: ksef2jpk.utils.ksef_number
+
+tests/test_ksef_parser.py
+- lines: 412
+- classes: -
+- functions: test_ksef_parser_basic, test_korekta_stan_przed_only, test_korekta_totals_check_does_not_warn_for_zero_correction, test_parser_detects_mpp, test_parser_handles_oo_procedure, test_parser_detects_wdt, test_parser_detects_export_exp, test_parser_detects_gtu_06
+- imports: ksef2jpk.parser.ksef_parser
+
+tests/test_string_tools.py
+- lines: 9
+- classes: -
+- functions: test_safe_filename_removes_polish_chars, test_safe_filename_empty
+- imports: ksef2jpk.utils.string_tools
+
+tests/test_xsd_validation.py
+- lines: 249
+- classes: -
+- functions: test_generated_jpk_passes_xsd_validation, test_generated_jpk_with_kor_oo_imp_passes_xsd_validation, test_generated_jpk_with_wdt_passes_xsd_validation, test_generated_jpk_with_export_exp_passes_xsd_validation
+- imports: pathlib, ksef2jpk.adapter.jpk_adapter, ksef2jpk.builder.jpk_builder, ksef2jpk.generator.jpk_generator, ksef2jpk.model.jpk_model, ksef2jpk.validator.validate_jpk
+
+
+# DOMAIN OBJECTS / PUBLIC SYMBOLS
+
+ksef2jpk/main.py
+- def load_config()
+- def parse_args()
+- def resolve_input_source()
+- def print_section()
+- def get_period_bounds()
+- def parse_iso_date()
+- def get_filter_date_for_invoice()
+- def invoice_in_period()
+- def is_candidate_input_xml()
+- def init_quality_stats()
+- def update_quality_stats()
+- def write_quality_csv()
+- def get_document_dedup_key()
+- def main()
+
+ksef2jpk/adapter/jpk_adapter.py
+- def dict_to_jpk_model()
+
+ksef2jpk/builder/jpk_builder.py
+- class JPKBuilderPROPlus
+
+ksef2jpk/classifier/gtu_classifier.py
+- class GTUClassifier
+
+ksef2jpk/classifier/jpk_flags.py
+- class JPKFlags
+- class JPKFlagsClassifier
+
+ksef2jpk/generator/jpk_generator.py
+- class JPKGeneratorPRO
+
+ksef2jpk/mapper/jpk_mapper.py
+- class JPKMapperPRO
+
+ksef2jpk/model/deklaracja_model.py
+- class DeklaracjaVAT7
+
+ksef2jpk/model/faktura_model.py
+- class Kontrahent
+- class Pozycja
+- class FakturaModel
+
+ksef2jpk/model/jpk_model.py
+- class SprzedazCtrl
+- class ZakupCtrl
+- class JPKModel
+- class WierszEwidencji
+
+ksef2jpk/model/podatnik_model.py
+- class Podatnik
+
+ksef2jpk/model/sprzedaz_model.py
+- class SprzedazWiersz
+
+ksef2jpk/model/zakup_model.py
+- class ZakupWiersz
+
+ksef2jpk/parser/ksef_parser.py
+- class KSeFParser
+
+ksef2jpk/utils/batch_loader.py
+- def find_latest_batch()
+- def load_batch_manifest()
+- def resolve_batch_dir()
+- def get_invoices_dir()
+
+ksef2jpk/utils/dedup.py
+- def get_document_dedup_key()
+
+ksef2jpk/utils/jpk2html.py
+- def localname()
+- class JPK2HTML
+
+ksef2jpk/utils/ksef_number.py
+- def normalize_ksef_number()
+- def is_valid_ksef_number()
+- def extract_ksef_number_from_filename()
+
+ksef2jpk/utils/policz_xml_w_katalogu.py
+- def policz_xml_w_katalogu()
+
+ksef2jpk/utils/string_tools.py
+- def safe_filename()
+
+ksef2jpk/validator/validate_jpk.py
+- class LocalResolver
+- def validate_jpk()
+
+tests/test_batch_loader.py
+- def test_get_invoices_dir()
+
+tests/test_deduplication.py
+- def test_get_document_dedup_key_prefers_nr_ksef()
+- def test_get_document_dedup_key_falls_back_to_meta_nr_ksef()
+- def test_get_document_dedup_key_falls_back_to_invoice_number()
+
+tests/test_full_pipeline.py
+- def test_full_pipeline()
+- def test_full_pipeline_korekta_to_zero()
+- def test_mpp_is_detected_but_not_emitted_in_jpk_xml()
+
+tests/test_gtu_classifier.py
+- def test_gtu_classifier_uses_default_rules_when_config_missing()
+- def test_gtu_classifier_loads_rules_from_yaml()
+- def test_gtu_classifier_is_case_insensitive()
+
+tests/test_jpk_builder.py
+- def test_jpk_builder_declaration_values()
+- def test_builder_marks_oo_sales_procedure()
+- def test_builder_maps_imp_purchase_to_k45_k46()
+
+tests/test_jpk_mapper.py
+- def test_mapper_groups_by_vat_rate_for_sales()
+- def test_mapper_uses_manual_gtu_override()
+- def test_mapper_uses_manual_procedure_override()
+
+tests/test_ksef_number.py
+- def test_valid_ksef_number()
+- def test_extract_ksef_number_from_filename()
+- def test_invalid_ksef_number()
+
+tests/test_ksef_parser.py
+- def test_ksef_parser_basic()
+- def test_korekta_stan_przed_only()
+- def test_korekta_totals_check_does_not_warn_for_zero_correction()
+- def test_parser_detects_mpp()
+- def test_parser_handles_oo_procedure()
+- def test_parser_detects_wdt()
+- def test_parser_detects_export_exp()
+- def test_parser_detects_gtu_06()
+
+tests/test_string_tools.py
+- def test_safe_filename_removes_polish_chars()
+- def test_safe_filename_empty()
+
+tests/test_xsd_validation.py
+- def test_generated_jpk_passes_xsd_validation()
+- def test_generated_jpk_with_kor_oo_imp_passes_xsd_validation()
+- def test_generated_jpk_with_wdt_passes_xsd_validation()
+- def test_generated_jpk_with_export_exp_passes_xsd_validation()
+
+
+# FILE METADATA
+
+- pyproject.toml
+  size: 1381
+  lines: 65
+  mtime: 2026-05-09T05:34:31
+  sha256: 64b3511ed025c911f17a08450f39c28b3c88ae007fed077174a4ed05d9b31c33
+- requirements.txt
+  size: 199
+  lines: 14
+  mtime: 2026-05-09T17:08:53
+  sha256: 13064de5c48aa1e72ee48b4d9a4538f16b93a4fcab0807cb9945f075ba3d0a92
+- README.md
+  size: 6043
+  lines: 366
+  mtime: 2026-05-09T05:49:20
+  sha256: b70b3ebbb5ebee75dac8c52af209417311105f1f40e959abef6ab1f48b48cd42
+- pytest.ini
+  size: 48
+  lines: 3
+  mtime: 2026-05-09T19:03:12
+  sha256: 8b8a2f4c1b3c7dc1f75b0d0ab7ae218130f1b7548211b681b90128b044d6c416
+- .gitignore
+  size: 242
+  lines: 34
+  mtime: 2026-05-09T17:23:19
+  sha256: 934ac27f6773d11ac91a14e715711773956f4ca0fb1ff0b5d499ec9ac9586b18
+- .gitattributes
+  size: 276
+  lines: 24
+  mtime: 2026-04-23T13:52:07
+  sha256: d7e9001c7a4e8d8017eb6fda046abb4691943e0104261650d882cf410a3c4085
+- check.ps1
+  size: 1511
+  lines: 52
+  mtime: 2026-05-09T19:25:35
+  sha256: 83218f726d8c836e8c686e996338784310c05cd5c7090b684cddcb1b8a3a16f8
+- fix.ps1
+  size: 405
+  lines: 13
+  mtime: 2026-05-10T04:56:20
+  sha256: 039e12644e0387c2c6b2da52dcbd62e1d041e135329094a696f56ce8d0987baa
+- ksef2jpk/main.py
+  size: 24809
+  lines: 685
+  mtime: 2026-05-10T09:29:40
+  sha256: 1b423372163d86188a693926fd0142f47b9393ebb4fa2e3aac774f86a3b03838
+- .bandit
+  size: 146
+  lines: 10
+  mtime: 2026-04-30T09:08:16
+  sha256: 0927913d640a1e6233d631065bc3e262fb6c837797ea3d7eff918f64622ab315
+- config/gtu_rules.yaml
+  size: 367
+  lines: 29
+  mtime: 2026-05-10T06:50:04
+  sha256: cd6630a3c1a279bd5de8a8ea1612c8b3f476eb178c253b0d1a50dd9673b2e3e8
+- config_example.json
+  size: 369
+  lines: 19
+  mtime: 2026-04-23T13:55:40
+  sha256: 5524f3cacd9b16e5db2ff17614f09a47518fe982b1bbfc8a1dc9cc665677b2ca
+- create-venv.ps1
+  size: 1813
+  lines: 60
+  mtime: 2026-05-08T22:27:32
+  sha256: 502f1bd23c4cc8626e5f92d66cf14a33057bbc75a624cf574cb112e8cfb4d1bf
+- ISSUES_BACKLOG.md
+  size: 8405
+  lines: 591
+  mtime: 2026-05-09T17:39:03
+  sha256: 704e358d9cef750694bb31b23030def59b3d40b00c7b4bdc3ab0bea3a5e3f44a
+- ksef2jpk/__init__.py
+  size: 0
+  lines: 0
+  mtime: 2026-04-22T11:50:40
+  sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+- ksef2jpk/__main__.py
+  size: 66
+  lines: 4
+  mtime: 2026-05-01T10:09:31
+  sha256: 141ed82bfa4527c8e45484b0cf1f65d40cd3fda8db562617bb87afbfcaa06b55
+- ksef2jpk/adapter/__init__.py
+  size: 0
+  lines: 0
+  mtime: 2026-04-22T11:50:40
+  sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+- ksef2jpk/adapter/jpk_adapter.py
+  size: 4622
+  lines: 162
+  mtime: 2026-05-01T10:09:32
+  sha256: bc58d0ff71e3d324b98fd8152bbf2516f1bef142caf9b2373567e0a424d319a8
+- ksef2jpk/builder/__init__.py
+  size: 0
+  lines: 0
+  mtime: 2026-04-22T11:50:40
+  sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+- ksef2jpk/builder/jpk_builder.py
+  size: 11801
+  lines: 363
+  mtime: 2026-05-10T06:09:08
+  sha256: 7303163d002853ecd423fa46aa3a39ef4da6971476187f18f37c3727ff893e61
+- ksef2jpk/classifier/__init__.py
+  size: 0
+  lines: 0
+  mtime: 2026-04-22T11:50:40
+  sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+- ksef2jpk/classifier/gtu_classifier.py
+  size: 1537
+  lines: 64
+  mtime: 2026-05-10T06:58:40
+  sha256: 206c30f96c15a7775d5b691ba012edeb2d641860274863640d8223883423bac2
+- ksef2jpk/classifier/jpk_flags.py
+  size: 8933
+  lines: 287
+  mtime: 2026-05-01T10:09:32
+  sha256: 9c4bcccbba554229a2693d8ca248c60ee4abd4260efa039e0772df10d47ceefe
+- ksef2jpk/generator/__init__.py
+  size: 0
+  lines: 0
+  mtime: 2026-04-22T11:50:40
+  sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+- ksef2jpk/generator/jpk_generator.py
+  size: 15666
+  lines: 371
+  mtime: 2026-05-10T06:32:42
+  sha256: 83efa99cea9ef78656fb1665df59712fa376f2b03818250432eb4ee376ee917d
+- ksef2jpk/mapper/__init__.py
+  size: 0
+  lines: 0
+  mtime: 2026-04-22T11:50:40
+  sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+- ksef2jpk/mapper/jpk_mapper.py
+  size: 4168
+  lines: 107
+  mtime: 2026-05-10T06:46:22
+  sha256: 4968ec12d78816bcb40fc0bea4b3082f559a489754337406677a5ce5bfd44f04
+- ksef2jpk/model/__init__.py
+  size: 0
+  lines: 0
+  mtime: 2026-04-22T11:50:40
+  sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+- ksef2jpk/model/deklaracja_model.py
+  size: 1521
+  lines: 73
+  mtime: 2026-05-01T10:09:31
+  sha256: 4308cb5bc6f7653db6f06f2be6249e28d7070ce79b1d1671f62d951593cdfe02
+- ksef2jpk/model/faktura_model.py
+  size: 625
+  lines: 30
+  mtime: 2026-05-10T06:41:54
+  sha256: c589fb16cc0ab777820cdcbedc767e498656ec0ba6198debe7688d7c81c8b64d
+- ksef2jpk/model/jpk_model.py
+  size: 2461
+  lines: 96
+  mtime: 2026-05-09T19:35:55
+  sha256: 0d93f51393e608dc12a6023f7973bfc1e3dd57855cfedcec2441193912d3e468
+- ksef2jpk/model/podatnik_model.py
+  size: 577
+  lines: 29
+  mtime: 2026-05-01T09:58:19
+  sha256: a51126d74e562948b65dcc6a11cf1c6f2b013ff7c6f38c7cc93633c6276ed78a
+- ksef2jpk/model/sprzedaz_model.py
+  size: 755
+  lines: 36
+  mtime: 2026-05-01T10:09:32
+  sha256: cb72c6d98538ca68614c87fa16fa07dc8db0cdf4e6abbe0a030df371a064b541
+- ksef2jpk/model/zakup_model.py
+  size: 533
+  lines: 26
+  mtime: 2026-05-01T10:09:32
+  sha256: f08f2a22bb74e92d4c401a697ffffcbd50296a2c7aeb7b25bfd1a326fa06026c
+- ksef2jpk/parser/__init__.py
+  size: 0
+  lines: 0
+  mtime: 2026-04-22T11:50:40
+  sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+- ksef2jpk/parser/ksef_parser.py
+  size: 16957
+  lines: 500
+  mtime: 2026-05-10T06:40:18
+  sha256: a3ba77a73f7bb3e567f1cd0c9f18ca52a3c083c21cc10639ec81c79119c2ccd4
+- ksef2jpk/utils/batch_loader.py
+  size: 1008
+  lines: 35
+  mtime: 2026-05-01T12:22:41
+  sha256: 5b91409e01dcd376f02648f57bb18b90ffae4675af8734c7e00e1f22202d04ec
+- ksef2jpk/utils/dedup.py
+  size: 126
+  lines: 2
+  mtime: 2026-05-10T09:29:39
+  sha256: ce83b2450d9435d457c42dfc8a6e7412125a803407a295bb5a3a9ba396a1c564
+- ksef2jpk/utils/jpk2html.py
+  size: 3391
+  lines: 145
+  mtime: 2026-05-09T20:12:52
+  sha256: a2c174a71a6fb4d124cb89e0e790df49372ba9e79f8df5a05f35ca77a95b3a31
+- ksef2jpk/utils/ksef_number.py
+  size: 1191
+  lines: 45
+  mtime: 2026-05-01T10:09:32
+  sha256: 65629c7a012eca9083456bf71c95373d3d68e4563e6ecf4469ac505eecb39157
+- ksef2jpk/utils/policz_xml_w_katalogu.py
+  size: 443
+  lines: 19
+  mtime: 2026-05-01T09:58:19
+  sha256: 7fa59ab3530f9f2d8b69718df19359302740cc340625f1955209df4320e81012
+- ksef2jpk/utils/string_tools.py
+  size: 484
+  lines: 23
+  mtime: 2026-05-01T10:09:32
+  sha256: 11eb454c04ac0e3b1c7c361eb092324f26dcc31a4f61213edf2a87b91faa6214
+- ksef2jpk/validator/__init__.py
+  size: 0
+  lines: 0
+  mtime: 2026-04-22T11:50:40
+  sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+- ksef2jpk/validator/validate_jpk.py
+  size: 1975
+  lines: 70
+  mtime: 2026-05-01T12:22:41
+  sha256: d51cedddb12b43d1995d5be4a2b3ccb2215d4920136e929685ad89b2f11969c5
+- tests/test_batch_loader.py
+  size: 468
+  lines: 21
+  mtime: 2026-05-06T13:56:33
+  sha256: aaa428123558c308fee0699e5f76fb1e0b4168a3f864f74fd2ded7f6c89340a3
+- tests/test_deduplication.py
+  size: 1019
+  lines: 41
+  mtime: 2026-05-10T09:29:40
+  sha256: e5eb73243c1e55b44059030981db5365b476259aed08c4d41c58028e27e49025
+- tests/test_full_pipeline.py
+  size: 6529
+  lines: 255
+  mtime: 2026-05-10T04:56:33
+  sha256: 457aa80452eb4195b3797940df2e9148687b9e8c45cadd2d054a64a3ee57da75
+- tests/test_gtu_classifier.py
+  size: 1367
+  lines: 50
+  mtime: 2026-05-10T06:59:04
+  sha256: 496eb512495bf6d3e08c7ecbffa376f4889031456e239f1beeb3ce9a5a49782e
+- tests/test_jpk_builder.py
+  size: 3573
+  lines: 135
+  mtime: 2026-05-10T05:40:21
+  sha256: b8c195d6a228c487915c3c91136e6ba99b03d072abe378015e6823ff94a2d1dd
+- tests/test_jpk_mapper.py
+  size: 3206
+  lines: 108
+  mtime: 2026-05-10T06:46:22
+  sha256: 1339a053c2ca7f8497a5544b9aaebd926b2134b9cdb4b480e293e4cd6c045cb0
+- tests/test_ksef_number.py
+  size: 531
+  lines: 18
+  mtime: 2026-05-06T13:56:33
+  sha256: 09d59ef4149a66e76c67324b6d53185d138908c991a96a3228f2dc5be7062759
+- tests/test_ksef_parser.py
+  size: 9990
+  lines: 412
+  mtime: 2026-05-10T06:40:18
+  sha256: fa19108f466611fa1ebb673efb604e15d5c5dd0684d8d2b02a2cd247a390f1ac
+- tests/test_string_tools.py
+  size: 272
+  lines: 9
+  mtime: 2026-05-06T13:56:33
+  sha256: f209f59c8ad8534eae83eb3d6aaf24697848fe5c80f9ecdd88c3c384e5045ea5
+- tests/test_xsd_validation.py
+  size: 6972
+  lines: 249
+  mtime: 2026-05-10T06:32:41
+  sha256: 79140f549d9dd27f11d9ea55843b26025babdbe7c7f280ba4a936fdfae024b76
+- update-venv.ps1
+  size: 1670
+  lines: 50
+  mtime: 2026-05-09T07:11:34
+  sha256: 2a007a1d6e52f50917545857247d0375149dbda8db0009fb5f7d2ef4a0ce9c44
 
 # PROJECT TREE
 
@@ -453,8 +1385,11 @@ tests/test_string_tools.py
 ├── .gitattributes
 ├── .gitignore
 ├── check.ps1
+├── config/
+│   ├── gtu_rules.yaml
 ├── config_example.json
 ├── create-venv.ps1
+├── fix.ps1
 ├── ISSUES_BACKLOG.md
 ├── ksef2jpk/
 │   ├── __init__.py
@@ -467,6 +1402,7 @@ tests/test_string_tools.py
 │   │   ├── jpk_builder.py
 │   ├── classifier/
 │   │   ├── __init__.py
+│   │   ├── gtu_classifier.py
 │   │   ├── jpk_flags.py
 │   ├── generator/
 │   │   ├── __init__.py
@@ -488,6 +1424,7 @@ tests/test_string_tools.py
 │   │   ├── ksef_parser.py
 │   ├── utils/
 │   │   ├── batch_loader.py
+│   │   ├── dedup.py
 │   │   ├── jpk2html.py
 │   │   ├── ksef_number.py
 │   │   ├── policz_xml_w_katalogu.py
@@ -501,24 +1438,33 @@ tests/test_string_tools.py
 ├── requirements.txt
 ├── tests/
 │   ├── test_batch_loader.py
+│   ├── test_deduplication.py
 │   ├── test_full_pipeline.py
+│   ├── test_gtu_classifier.py
 │   ├── test_jpk_builder.py
 │   ├── test_jpk_mapper.py
 │   ├── test_ksef_number.py
 │   ├── test_ksef_parser.py
 │   ├── test_string_tools.py
+│   ├── test_xsd_validation.py
 ├── update-venv.ps1
 
 # INCLUDED FILES
 
-- .bandit
-- .gitattributes
-- .gitignore
-- ISSUES_BACKLOG.md
+- pyproject.toml
+- requirements.txt
 - README.md
+- pytest.ini
+- .gitignore
+- .gitattributes
 - check.ps1
+- fix.ps1
+- ksef2jpk/main.py
+- .bandit
+- config/gtu_rules.yaml
 - config_example.json
 - create-venv.ps1
+- ISSUES_BACKLOG.md
 - ksef2jpk/__init__.py
 - ksef2jpk/__main__.py
 - ksef2jpk/adapter/__init__.py
@@ -526,10 +1472,10 @@ tests/test_string_tools.py
 - ksef2jpk/builder/__init__.py
 - ksef2jpk/builder/jpk_builder.py
 - ksef2jpk/classifier/__init__.py
+- ksef2jpk/classifier/gtu_classifier.py
 - ksef2jpk/classifier/jpk_flags.py
 - ksef2jpk/generator/__init__.py
 - ksef2jpk/generator/jpk_generator.py
-- ksef2jpk/main.py
 - ksef2jpk/mapper/__init__.py
 - ksef2jpk/mapper/jpk_mapper.py
 - ksef2jpk/model/__init__.py
@@ -542,22 +1488,23 @@ tests/test_string_tools.py
 - ksef2jpk/parser/__init__.py
 - ksef2jpk/parser/ksef_parser.py
 - ksef2jpk/utils/batch_loader.py
+- ksef2jpk/utils/dedup.py
 - ksef2jpk/utils/jpk2html.py
 - ksef2jpk/utils/ksef_number.py
 - ksef2jpk/utils/policz_xml_w_katalogu.py
 - ksef2jpk/utils/string_tools.py
 - ksef2jpk/validator/__init__.py
 - ksef2jpk/validator/validate_jpk.py
-- pyproject.toml
-- pytest.ini
-- requirements.txt
 - tests/test_batch_loader.py
+- tests/test_deduplication.py
 - tests/test_full_pipeline.py
+- tests/test_gtu_classifier.py
 - tests/test_jpk_builder.py
 - tests/test_jpk_mapper.py
 - tests/test_ksef_number.py
 - tests/test_ksef_parser.py
 - tests/test_string_tools.py
+- tests/test_xsd_validation.py
 - update-venv.ps1
 
 # SKIPPED PATHS
@@ -581,6 +1528,7 @@ tests/test_string_tools.py
 - venv/ — ignored directory
 - config.json — secret/sensitive file
 - docs/Analiza projektu ksef2jpk.docx — binary file
+- docs/MPP.docx — binary file
 - docs/Wskazówki od AI.docx — binary file
 - export_project_for_ai.py — exporter script
 - ksef2jpk/config.json — secret/sensitive file
@@ -591,50 +1539,476 @@ tests/test_string_tools.py
 # FILE CONTENTS
 
 
-===== FILE START: .bandit =====
+===== FILE START: pyproject.toml =====
 
-[bandit]
-recursive = True
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
 
-exclude =
-    outbound,
-    tools,
-    __pycache__,
-    validator/xsd
+[project]
+name = "ksef-jpk"
+version = "0.1.0"
+description = "KSeF → JPK automation toolkit"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+    { name = "Dariusz Polzer" }
+]
 
-skips = B101,B404,B603,B607,B110,B112
+# Twoje zależności runtime (jeśli jakieś masz)
+dependencies = []
 
-===== FILE END: .bandit =====
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "ruff",
+    "black",
+    "bandit",
+]
+
+[tool.setuptools]
+package-dir = {"" = "."}
+
+[tool.setuptools.packages.find]
+where = ["."]
+
+# -----------------------------------------
+# PYTEST
+# -----------------------------------------
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+norecursedirs = ["venv"]
+testpaths = ["tests"]
+
+# -----------------------------------------
+# RUFF
+# -----------------------------------------
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+src = ["src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = []
+
+# -----------------------------------------
+# BLACK
+# -----------------------------------------
+[tool.black]
+line-length = 120
+target-version = ["py311"]
+
+# -----------------------------------------
+# BANDIT
+# -----------------------------------------
+[tool.bandit]
+exclude_dirs = ["venv"]
+skips = ["B101", "B404", "B603", "B607", "B110", "B112"]
+
+===== FILE END: pyproject.toml =====
 
 
-===== FILE START: .gitattributes =====
+===== FILE START: requirements.txt =====
 
-﻿# Normalizacja końców linii
-* text=auto
+colorama==0.4.6
+defusedxml==0.7.1
+iniconfig==2.3.0
+lxml==5.3.0
+packaging==26.2
+pathspec==0.12.1
+pluggy==1.6.0
+Pygments==2.20.0
+pytest==9.0.3
+defusedxml>=0.7
+pytest>=9.0
+ruff
+black
+bandit
 
-# Python
-*.py text eol=lf
+===== FILE END: requirements.txt =====
 
-# JSON
-*.json text eol=lf
 
-# XML / XSD
-*.xml text eol=lf
-*.xsd text eol=lf
+===== FILE START: README.md =====
 
-# HTML
-*.html text eol=lf
+# KSEF2JPK
 
-# Markdown
-*.md text eol=lf
+## Generator JPK_V7M z faktur KSeF
 
-# Obrazy (binaria)
-*.png binary
-*.jpg binary
-*.jpeg binary
-*.gif binary
+Narzędzie w **Pythonie** do budowy pliku **JPK_V7M** na podstawie faktur XML pobranych z **KSeF**.
 
-===== FILE END: .gitattributes =====
+Program analizuje faktury KSeF, mapuje dane do ewidencji VAT i generuje poprawny plik **JPK_V7M XML zgodny ze schemą Ministerstwa Finansów**.
+
+---
+
+# Funkcje
+
+Program:
+
+* parsuje faktury XML z KSeF
+* rozpoznaje **sprzedaż / zakup**
+* mapuje dane do **ewidencji VAT**
+* buduje strukturę **JPK_V7M**
+* generuje XML zgodny z **XSD MF**
+* waliduje plik względem schemy
+* generuje **podgląd HTML JPK**
+* generuje **raport jakości danych**
+
+---
+
+# Pipeline
+
+```
+KSeF XML
+   ↓
+parser
+   ↓
+klasyfikacja VAT
+   ↓
+mapowanie ewidencji
+   ↓
+budowa JPK
+   ↓
+generator XML
+   ↓
+walidacja XSD
+   ↓
+podgląd HTML
+```
+
+---
+
+# Diagram działania
+
+```mermaid
+flowchart TD
+
+A[KSeF XML] --> B[KSeF Parser]
+
+B --> C[Klasyfikacja VAT]
+C --> C1[Sprzedaż]
+C --> C2[Zakup]
+
+C1 --> D[Mapper JPK]
+C2 --> D
+
+D --> E[Wiersze ewidencji VAT]
+
+E --> F[Builder JPK]
+F --> G[Generator XML]
+
+G --> H[JPK_V7M XML]
+H --> I[Walidacja XSD]
+
+H --> J[Podgląd HTML]
+```
+
+---
+
+# Obsługiwane elementy
+
+✔ sprzedaż / zakup
+✔ GTU
+✔ procedury (informacyjne)
+✔ kontrola sum faktury
+✔ rozpoznanie korekt
+✔ raport jakości danych
+
+---
+
+## Struktura projektu
+
+```
+ksef2jpk/
+│
+├── main.py
+│   Główny pipeline programu:
+│   - wczytanie konfiguracji
+│   - parsowanie faktur
+│   - klasyfikacja VAT
+│   - budowa JPK
+│   - walidacja XSD
+│   - raport jakości
+│
+├── config.json
+│   Konfiguracja systemu:
+│   - katalog wejściowy XML
+│   - katalog wynikowy JPK
+│   - ścieżka do XSD
+│   - dane podatnika
+│
+├── parser/
+│   └── ksef_parser.py
+│       Parser faktur KSeF XML
+│
+├── classifier/
+│   └── jpk_flags.py
+│       Klasyfikacja podatkowa:
+│       - sprzedaż / zakup
+│       - GTU
+│       - procedury (MPP itp.)
+│
+├── mapper/
+│   └── jpk_mapper.py
+│       Mapowanie faktur do wierszy ewidencji VAT
+│
+├── builder/
+│   └── jpk_builder.py
+│       Budowa struktury JPK
+│
+├── adapter/
+│   └── jpk_adapter.py
+│       Konwersja danych do modelu JPK
+│
+├── generator/
+│   └── jpk_generator.py
+│       Generowanie pliku XML JPK_V7M
+│
+├── validator/
+│   ├── validate_jpk.py
+│   └── JPK_V7M_3.xsd
+│       Walidacja względem schemy MF
+│
+├── model/
+│   ├── faktura_model.py
+│   ├── jpk_model.py
+│   └── deklaracja_model.py
+│
+└── utils/
+    ├── ksef_number.py
+    ├── policz_xml_w_katalogu.py
+    └── jpk2html.py
+```
+
+
+# Integracja z ksef-sync
+
+Program może czytać faktury bezpośrednio z **batcha wygenerowanego przez ksef-sync**.
+
+Przykład katalogu:
+
+```
+ksef-sync/data/batches/
+   20260424T123004Z/
+      invoices/
+      pdf/
+      logs/
+      manifest.json
+```
+
+Wtedy `input_dir` wskazuje na:
+
+```
+.../batches/<batch_id>/invoices
+```
+
+---
+
+# Konfiguracja
+
+Projekt wymaga pliku:
+
+```
+config.json
+```
+
+Przykład:
+
+```json
+{
+  "input_dir": "C:/KSeF/XML",
+  "xml_dir": "C:/JPK/XML",
+  "html_dir": "C:/JPK/HTML",
+  "xsd_path": "validator/JPK_V7M_3.xsd",
+
+  "jpk_rok": 2026,
+  "jpk_miesiac": 4,
+
+  "enable_date_filter": true,
+
+  "output_file_pattern": "JPK_{podatnik}_{miesiac}_{rok}.xml",
+
+  "podmiot": {
+    "nip": "0000000000",
+    "nazwa": "Example Company",
+    "kod_urzedu": "0000"
+  }
+}
+```
+
+Najważniejsze pola:
+
+| pole        | znaczenie                     |
+| ----------- | ----------------------------- |
+| input_dir   | katalog z fakturami XML       |
+| xml_dir     | katalog wynikowych plików JPK |
+| html_dir    | katalog podglądu HTML         |
+| xsd_path    | ścieżka do schemy MF          |
+| podmiot.nip | NIP podatnika                 |
+
+---
+
+# Uruchomienie
+
+W katalogu projektu:
+
+```
+python -m ksef2jpk.main
+```
+
+---
+
+# Wynik działania
+
+Program generuje:
+
+```
+JPK/XML/
+   JPK_xxx.xml
+
+JPK/HTML/
+   JPK_xxx.html
+```
+
+oraz raport w konsoli zawierający:
+
+* podsumowanie przetworzonych faktur
+* kontrolę sum
+* raport jakości danych
+* informację o wykrytych korektach
+
+---
+
+# Raport jakości danych
+
+Przykład:
+
+```
+Liczba plików wejściowych:      4
+Poprawnie sparsowane faktury:   4
+Poprawnie zmapowane wiersze:    4
+
+Wiersze sprzedaży:              1
+Wiersze zakupu:                 3
+
+---- RAPORT JAKOŚCI DANYCH ----
+
+NrKSeF z XML:                   0
+NrKSeF z nazwy pliku:           4
+Bez NrKSeF:                     0
+
+Faktury z GTU:                  3
+Faktury z procedurami:          1
+
+Ostrzeżenia kontroli sum:       0
+Wykryte korekty:                0
+```
+
+---
+
+# Filtr okresu JPK
+
+Jeżeli w `config.json`:
+
+```
+enable_date_filter = true
+```
+
+program uwzględnia tylko faktury z okresu:
+
+```
+rok / miesiąc
+```
+
+Logika dat:
+
+| typ      | używana data   |
+| -------- | -------------- |
+| sprzedaż | data_sprzedazy |
+| zakup    | data_wplywu    |
+
+---
+
+# Korekty
+
+Parser wykrywa korekty:
+
+```
+RodzajFaktury = KOR
+```
+
+Korekty są:
+
+✔ wykrywane
+✔ raportowane
+
+ale **nie są jeszcze księgowane w JPK**.
+
+---
+
+# Walidacja
+
+Wygenerowany plik JPK jest walidowany względem:
+
+```
+XSD Ministerstwa Finansów
+```
+
+Jeżeli walidacja przejdzie:
+
+```
+✔ JPK jest poprawny zgodnie z XSD MF
+```
+
+---
+
+# Wymagania
+
+Python:
+
+```
+Python 3.10+
+```
+
+Biblioteki:
+
+```
+standard library
+```
+
+(brak zewnętrznych zależności)
+
+---
+
+# Status projektu
+
+```
+Wersja: MVP stabilne
+```
+
+Funkcjonalność:
+
+✔ generowanie poprawnego JPK
+✔ walidacja XSD
+✔ raport jakości danych
+
+---
+
+# Autor
+
+Projekt narzędzia do automatycznego generowania plików **JPK_V7M** na podstawie faktur XML z **KSeF**.
+
+===== FILE END: README.md =====
+
+
+===== FILE START: pytest.ini =====
+
+[pytest]
+norecursedirs = venv
+pythonpath = .
+
+===== FILE END: pytest.ini =====
 
 
 ===== FILE START: .gitignore =====
@@ -675,6 +2049,946 @@ Thumbs.db
 *.egg-info/
 
 ===== FILE END: .gitignore =====
+
+
+===== FILE START: .gitattributes =====
+
+﻿# Normalizacja końców linii
+* text=auto
+
+# Python
+*.py text eol=lf
+
+# JSON
+*.json text eol=lf
+
+# XML / XSD
+*.xml text eol=lf
+*.xsd text eol=lf
+
+# HTML
+*.html text eol=lf
+
+# Markdown
+*.md text eol=lf
+
+# Obrazy (binaria)
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+
+===== FILE END: .gitattributes =====
+
+
+===== FILE START: check.ps1 =====
+
+# ============================================
+# CHECK.PS1 — testy + lint + format + security
+# ============================================
+
+$ErrorActionPreference = "Stop"
+
+$src = "ksef2jpk"
+$tests = "tests"
+
+if (-not (Test-Path $src)) {
+    Write-Host "Źródło nie istnieje: $src" -ForegroundColor Red
+    exit 1
+}
+
+if (-not (Test-Path $tests)) {
+    Write-Host "Katalog testów nie istnieje: $tests" -ForegroundColor Red
+    exit 1
+}
+
+Write-Host "=== PYTEST ===" -ForegroundColor Cyan
+python -m pytest -v
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "`nPYTEST FAILED ❌" -ForegroundColor Red
+    exit $LASTEXITCODE
+}
+
+Write-Host "`n=== RUFF ===" -ForegroundColor Cyan
+python -m ruff check $src $tests
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "`nRUFF FAILED ❌" -ForegroundColor Red
+    exit $LASTEXITCODE
+}
+
+Write-Host "`n=== BLACK (check) ===" -ForegroundColor Cyan
+python -m black --check $src $tests
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "`nBLACK FAILED ❌" -ForegroundColor Red
+    exit $LASTEXITCODE
+}
+
+Write-Host "`n=== BANDIT ===" -ForegroundColor Cyan
+python -m bandit -r $src
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "`nBANDIT FAILED ❌" -ForegroundColor Red
+    exit $LASTEXITCODE
+}
+
+Write-Host "`n============================================" -ForegroundColor Green
+Write-Host "Wszystkie testy zakończone sukcesem ✔️" -ForegroundColor Green
+Write-Host "============================================" -ForegroundColor Green
+
+exit 0
+
+===== FILE END: check.ps1 =====
+
+
+===== FILE START: fix.ps1 =====
+
+# ============================================
+# FIX.PS1 — automatyczne poprawki
+# ============================================
+
+$ErrorActionPreference = "Stop"
+
+Write-Host "=== BLACK ===" -ForegroundColor Cyan
+python -m black ksef2jpk tests
+
+Write-Host "`n=== RUFF FIX ===" -ForegroundColor Cyan
+python -m ruff check ksef2jpk tests --fix
+
+Write-Host "`nGotowe ✔️" -ForegroundColor Green
+
+===== FILE END: fix.ps1 =====
+
+
+===== FILE START: ksef2jpk/main.py =====
+
+import argparse
+import csv
+import glob
+import json
+import os
+import traceback
+from datetime import datetime
+from pathlib import Path
+
+from ksef2jpk.adapter.jpk_adapter import dict_to_jpk_model
+from ksef2jpk.builder.jpk_builder import JPKBuilderPROPlus
+from ksef2jpk.classifier.jpk_flags import JPKFlagsClassifier
+from ksef2jpk.generator.jpk_generator import JPKGeneratorPRO
+from ksef2jpk.mapper.jpk_mapper import JPKMapperPRO
+from ksef2jpk.parser.ksef_parser import KSeFParser
+from ksef2jpk.utils.batch_loader import get_invoices_dir
+from ksef2jpk.utils.dedup import get_document_dedup_key
+from ksef2jpk.utils.jpk2html import JPK2HTML
+from ksef2jpk.utils.policz_xml_w_katalogu import policz_xml_w_katalogu
+from ksef2jpk.utils.string_tools import safe_filename
+from ksef2jpk.validator.validate_jpk import validate_jpk
+
+# ------------------------------------------------------------
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DEFAULT_CONFIG_PATH = os.path.abspath(os.path.join(BASE_DIR, "..", "config.json"))
+
+
+def load_config(config_path: str) -> dict:
+    if not os.path.exists(config_path):
+        raise FileNotFoundError(f"Brak pliku konfiguracyjnego: {config_path}")
+
+    with open(config_path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="KSeF2JPK - generator JPK z faktur KSeF")
+
+    parser.add_argument("--year", type=int, help="Rok JPK, np. 2026")
+    parser.add_argument("--month", type=int, help="Miesiąc JPK, np. 4")
+    parser.add_argument("--input-dir", help="Katalog z fakturami XML")
+    parser.add_argument("--batch-dir", help="Katalog batch z ksef-sync")
+    parser.add_argument("--config", help="Ścieżka do config.json")
+    parser.add_argument("--no-date-filter", action="store_true", help="Wyłącz filtr daty")
+
+    return parser.parse_args()
+
+
+def resolve_input_source(config: dict):
+    """
+    Obsługuje dwa tryby:
+    1. batch_dir z ksef-sync
+    2. klasyczne input_dir
+    """
+    if config.get("batch_dir"):
+        batch_root = Path(config["batch_dir"])
+        input_dir = get_invoices_dir(batch_root)
+
+        batch_dir = input_dir.parent
+        manifest_path = batch_dir / "manifest.json"
+
+        manifest = None
+        if manifest_path.exists():
+            with open(manifest_path, "r", encoding="utf-8") as f:
+                manifest = json.load(f)
+
+        return str(input_dir), batch_dir, manifest
+
+    if config.get("input_dir"):
+        return config["input_dir"], None, None
+
+    raise RuntimeError("Brak input_dir albo batch_dir w config.json")
+
+
+ARGS = parse_args()
+
+CONFIG_PATH = os.path.abspath(ARGS.config) if ARGS.config else DEFAULT_CONFIG_PATH
+CONFIG = load_config(CONFIG_PATH)
+XSD_PATH = CONFIG["xsd_path"]
+XML_DIR = CONFIG["xml_dir"]
+PODMIOT = CONFIG["podmiot"]
+HTML_DIR = CONFIG.get("html_dir", os.path.join(os.path.dirname(XML_DIR), "html"))
+
+os.makedirs(XML_DIR, exist_ok=True)
+os.makedirs(HTML_DIR, exist_ok=True)
+
+if ARGS.input_dir:
+    CONFIG["input_dir"] = ARGS.input_dir
+    CONFIG["batch_dir"] = None
+
+if ARGS.batch_dir:
+    CONFIG["batch_dir"] = ARGS.batch_dir
+    CONFIG["input_dir"] = None
+
+INPUT_DIR, BATCH_DIR, BATCH_MANIFEST = resolve_input_source(CONFIG)
+
+print("Katalog faktur wejściowych:", INPUT_DIR)
+
+if BATCH_DIR:
+    print("Batch:", BATCH_DIR)
+
+if BATCH_MANIFEST:
+    batch_info = BATCH_MANIFEST.get("batch", {})
+    print("Batch ID:", batch_info.get("batch_id"))
+    print("Faktur w manifeście:", batch_info.get("invoice_count"))
+
+
+now = datetime.now()
+
+JPK_ROK = ARGS.year or CONFIG.get("jpk_rok") or now.year
+JPK_MIESIAC = ARGS.month or CONFIG.get("jpk_miesiac") or now.month
+
+if not 1 <= int(JPK_MIESIAC) <= 12:
+    raise ValueError(f"Nieprawidłowy miesiąc: {JPK_MIESIAC}")
+
+ENABLE_DATE_FILTER = CONFIG.get("enable_date_filter", True)
+
+if ARGS.no_date_filter:
+    ENABLE_DATE_FILTER = False
+
+numer = policz_xml_w_katalogu(XML_DIR) + 1
+
+output_pattern = CONFIG.get("output_file_pattern", "JPK_{podatnik}_{miesiac}_{rok}.xml")
+
+nazwa = CONFIG["podmiot"]["nazwa"]
+podatnik_safe = safe_filename(nazwa).upper()
+
+output_filename = output_pattern.format(rok=JPK_ROK, miesiac=f"{JPK_MIESIAC:02d}", podatnik=podatnik_safe)
+
+OUTPUT_XML = os.path.join(XML_DIR, output_filename)
+
+
+# ------------------------------------------------------------
+# HELPER: WYDRUK SEKCJI
+# ------------------------------------------------------------
+
+
+def print_section(title: str) -> None:
+    print("\n" + "=" * 80)
+    print(title)
+    print("=" * 80)
+
+
+# ------------------------------------------------------------
+# HELPER: ZAKRES OKRESU JPK
+# ------------------------------------------------------------
+
+
+def get_period_bounds(year: int, month: int):
+    from calendar import monthrange
+
+    start = datetime(year, month, 1)
+    end = datetime(year, month, monthrange(year, month)[1])
+    return start, end
+
+
+def parse_iso_date(date_txt: str):
+    if not date_txt:
+        return None
+    try:
+        return datetime.fromisoformat(date_txt[:10])
+    except ValueError:
+        return None
+
+
+def get_filter_date_for_invoice(faktura):
+    """
+    Data używana do kwalifikacji do okresu JPK.
+    - sprzedaż: data_sprzedazy, fallback data_wystawienia
+    - zakup: data_wplywu, fallback data_wystawienia
+    """
+    typ = faktura.meta.get("typ")
+
+    if typ == "sprzedaz":
+        return faktura.meta.get("data_sprzedazy") or faktura.meta.get("data_wystawienia")
+
+    if typ == "zakup":
+        return faktura.meta.get("data_wplywu") or faktura.meta.get("data_wystawienia")
+
+    return faktura.meta.get("data_wystawienia")
+
+
+def invoice_in_period(faktura, start_dt: datetime, end_dt: datetime) -> bool:
+    date_txt = get_filter_date_for_invoice(faktura)
+    dt = parse_iso_date(date_txt)
+    if dt is None:
+        return False
+    return start_dt <= dt <= end_dt
+
+
+def is_candidate_input_xml(path: str) -> bool:
+    """
+    Filtruje tylko pliki, które chcemy traktować jako wejściowe faktury KSeF.
+    Odrzuca wygenerowane JPK i pomocnicze XML-e.
+    """
+    name = os.path.basename(path).lower()
+
+    excluded_prefixes = (
+        "jpk_",
+        "wynik_",
+        "output_",
+    )
+
+    excluded_exact = {
+        "wynik_test_jpk.xml",
+    }
+
+    if name in excluded_exact:
+        return False
+
+    if name.startswith(excluded_prefixes):
+        return False
+
+    return True
+
+
+def init_quality_stats() -> dict:
+    return {
+        "nr_ksef_xml": 0,
+        "nr_ksef_filename": 0,
+        "nr_ksef_missing": 0,
+        "with_gtu": 0,
+        "with_procedury": 0,
+        "sum_warning": 0,
+        "korekty": 0,
+        "input_xml_skipped": 0,
+        "input_validation_warning": 0,
+        "duplicates_skipped": 0,
+    }
+
+
+def update_quality_stats(stats: dict, faktura) -> None:
+    nr_ksef_source = faktura.meta.get("nr_ksef_source", "none")
+
+    if nr_ksef_source == "xml":
+        stats["nr_ksef_xml"] += 1
+    elif nr_ksef_source == "filename":
+        stats["nr_ksef_filename"] += 1
+    else:
+        stats["nr_ksef_missing"] += 1
+
+    if faktura.meta.get("gtu"):
+        stats["with_gtu"] += 1
+
+    if faktura.meta.get("procedury"):
+        stats["with_procedury"] += 1
+
+    kontrola_sum = faktura.meta.get("kontrola_sum", {})
+    if kontrola_sum and not kontrola_sum.get("all_ok", True):
+        stats["sum_warning"] += 1
+
+    if faktura.meta.get("is_korekta"):
+        stats["korekty"] += 1
+
+    walidacja = faktura.meta.get("walidacja_wejscia", {})
+    if walidacja and not walidacja.get("ok", True):
+        stats["input_validation_warning"] += 1
+
+
+def write_quality_csv(output_path, parsed_records, mapped_rows):
+    """
+    Raport jakości danych po parsowaniu i mapowaniu.
+    parsed_records = []
+
+    parsed_records.append(
+        {
+            "filename": filename,
+            "faktura": faktura,
+        }
+    )
+
+    mapped_rows: lista WierszEwidencji
+    """
+
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    rows_by_document = {}
+    for row in mapped_rows:
+        rows_by_document.setdefault(row.dokument, []).append(row)
+
+    fieldnames = [
+        "filename",
+        "numer",
+        "nr_ksef",
+        "typ",
+        "data_wystawienia",
+        "data_sprzedazy",
+        "kontrahent_nip",
+        "kontrahent_nazwa",
+        "netto",
+        "vat",
+        "gtu",
+        "procedury",
+        "is_korekta",
+        "kontrola_sum_ok",
+        "walidacja_ok",
+        "ostrzezenia",
+    ]
+
+    with output_path.open("w", newline="", encoding="utf-8-sig") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames, delimiter=";")
+        writer.writeheader()
+
+        for record in parsed_records:
+            filename = record["filename"]
+            faktura = record["faktura"]
+            meta = faktura.meta or {}
+
+            numer = meta.get("numer") or faktura.nr_ksef or "BRAK"
+            related_rows = rows_by_document.get(numer, [])
+
+            kontrola_sum = meta.get("kontrola_sum", {})
+            walidacja = meta.get("walidacja_wejscia", {})
+
+            if related_rows:
+                netto = sum(float(r.netto or 0) for r in related_rows)
+                vat = sum(float(r.vat or 0) for r in related_rows)
+                gtu = sorted({r.gtu for r in related_rows if r.gtu})
+                procedury = sorted({proc for r in related_rows for proc in (r.procedury or []) if proc})
+            else:
+                netto = meta.get("netto_razem", 0)
+                vat = meta.get("vat_razem", 0)
+                gtu = []
+                procedury = meta.get("procedury", [])
+
+            if meta.get("typ") == "sprzedaz":
+                kontrahent_nip = meta.get("nip_nabywcy", "")
+                kontrahent_nazwa = meta.get("nazwa_nabywcy", "")
+            elif meta.get("typ") == "zakup":
+                kontrahent_nip = meta.get("nip_sprzedawcy", "")
+                kontrahent_nazwa = meta.get("nazwa_sprzedawcy", "")
+            else:
+                kontrahent_nip = ""
+                kontrahent_nazwa = ""
+
+            writer.writerow(
+                {
+                    "filename": filename,
+                    "numer": meta.get("numer", ""),
+                    "nr_ksef": faktura.nr_ksef or meta.get("nr_ksef", ""),
+                    "typ": meta.get("typ", ""),
+                    "data_wystawienia": meta.get("data_wystawienia", ""),
+                    "data_sprzedazy": meta.get("data_sprzedazy", ""),
+                    "kontrahent_nip": kontrahent_nip,
+                    "kontrahent_nazwa": kontrahent_nazwa,
+                    "netto": round(float(netto or 0), 2),
+                    "vat": round(float(vat or 0), 2),
+                    "gtu": ",".join(gtu),
+                    "procedury": ",".join(procedury),
+                    "is_korekta": bool(meta.get("is_korekta")),
+                    "kontrola_sum_ok": kontrola_sum.get("all_ok", ""),
+                    "walidacja_ok": walidacja.get("ok", ""),
+                    "ostrzezenia": " | ".join(walidacja.get("warnings", [])),
+                }
+            )
+
+    print(f"[OK] Raport jakości CSV: {output_path}")
+
+
+def get_document_dedup_key(faktura):
+    return faktura.nr_ksef or faktura.meta.get("nr_ksef") or faktura.meta.get("numer")
+
+
+# ------------------------------------------------------------
+# MAIN
+# ------------------------------------------------------------
+
+
+def main():
+    parser = KSeFParser(PODMIOT["nip"])
+    classifier = JPKFlagsClassifier()
+    mapper = JPKMapperPRO()
+
+    all_paths = sorted(glob.glob(os.path.join(INPUT_DIR, "*.xml")))
+    paths = [p for p in all_paths if is_candidate_input_xml(p)]
+    skipped_non_input = [p for p in all_paths if not is_candidate_input_xml(p)]
+
+    if BATCH_MANIFEST:
+        manifest_count = BATCH_MANIFEST.get("batch", {}).get("invoice_count")
+        if manifest_count is not None and manifest_count != len(paths):
+            print(f"⚠️ Różnica manifest/XML: " f"manifest={manifest_count}, XML={len(paths)}")
+
+    if not paths:
+        print(f"❌ Nie znaleziono plików XML w katalogu: {INPUT_DIR}")
+        return
+
+    quality_stats = init_quality_stats()
+    quality_stats["input_xml_skipped"] = len(skipped_non_input)
+
+    period_start, period_end = get_period_bounds(JPK_ROK, JPK_MIESIAC)
+
+    # -----------------------------------------------------------------
+    # 1. PARSOWANIE + KLASYFIKACJA + OPCJONALNY FILTR DATY
+    # -----------------------------------------------------------------
+    print_section("1. PARSOWANIE FAKTUR")
+
+    faktury = []
+    parsed_records = []
+    parse_errors = []
+    skipped_by_date = []
+    skipped_corrections = []
+    seen_documents = set()
+    for path in paths:
+        filename = os.path.basename(path)
+
+        try:
+            faktura = parser.parse(path)
+            faktura = classifier.apply_to_invoice(faktura)
+
+            update_quality_stats(quality_stats, faktura)
+
+            # ---------------------------------------------------------
+            # KOREKTY – tylko sygnał, bez wpuszczania do JPK
+            # ---------------------------------------------------------
+            if faktura.meta.get("is_korekta"):
+                skipped_corrections.append(
+                    {
+                        "filename": filename,
+                        "numer": faktura.meta.get("numer"),
+                        "rodzaj_faktury": faktura.meta.get("rodzaj_faktury"),
+                        "przyczyna_korekty": faktura.meta.get("przyczyna_korekty"),
+                        "nr_fa_korygowanej": faktura.meta.get("nr_fa_korygowanej"),
+                        "data_fa_korygowanej": faktura.meta.get("data_fa_korygowanej"),
+                        "nr_ksef": faktura.nr_ksef,
+                    }
+                )
+
+                print(
+                    f"[KOREKTA] {filename} | "
+                    f"numer={faktura.meta.get('numer')!r} | "
+                    f"korygowana={faktura.meta.get('nr_fa_korygowanej')!r} | "
+                    f"powód={faktura.meta.get('przyczyna_korekty')!r}"
+                )
+
+            if ENABLE_DATE_FILTER:
+                if not invoice_in_period(faktura, period_start, period_end):
+                    skip_date = get_filter_date_for_invoice(faktura)
+                    skipped_by_date.append((filename, skip_date, faktura.meta.get("typ")))
+
+                    print(
+                        f"[POMINIĘTO] {filename} | " f"typ={faktura.meta.get('typ')!r} | " f"data_filtra={skip_date!r}"
+                    )
+                    continue
+            # dedup_key = faktura.nr_ksef or faktura.meta.get("nr_ksef") or faktura.meta.get("numer")
+            dedup_key = get_document_dedup_key(faktura)
+            if dedup_key in seen_documents:
+                print(f"[POMINIĘTO DUPLIKAT] {filename} | " f"klucz={dedup_key!r}")
+                quality_stats["duplicates_skipped"] += 1
+                continue
+
+            seen_documents.add(dedup_key)
+            faktury.append(faktura)
+
+            parsed_records.append(
+                {
+                    "filename": filename,
+                    "faktura": faktura,
+                }
+            )
+            kontrola_sum = faktura.meta.get("kontrola_sum", {})
+            print(
+                f"[OK] {filename} | "
+                f"typ={faktura.meta.get('typ')!r} | "
+                f"nr_ksef={faktura.nr_ksef!r} | "
+                f"nip_sprzedawcy={faktura.meta.get('nip_sprzedawcy')!r} | "
+                f"nip_nabywcy={faktura.meta.get('nip_nabywcy')!r} | "
+                f"data_wystawienia={faktura.meta.get('data_wystawienia')!r} | "
+                f"data_filtra={get_filter_date_for_invoice(faktura)!r} | "
+                f"pozycji={len(faktura.pozycje or [])} | "
+                f"procedury={faktura.meta.get('procedury', [])!r} | "
+                f"gtu={faktura.meta.get('gtu')!r} | "
+                f"kontrola_sum={kontrola_sum.get('all_ok')!r}"
+            )
+
+        except Exception as e:
+            parse_errors.append((filename, str(e)))
+            print(f"[BŁĄD] {filename} | parser/classifier: {e}")
+            traceback.print_exc()
+
+    print(f"\nZaładowano poprawnie {len(faktury)} z {len(paths)} faktur wejściowych.")
+
+    if ENABLE_DATE_FILTER:
+        print(f"Filtr okresu JPK: WŁĄCZONY " f"({period_start.date()} -> {period_end.date()})")
+        print(f"Pominięto po dacie: {len(skipped_by_date)}")
+    else:
+        print("Filtr okresu JPK: WYŁĄCZONY")
+
+    print(f"Korekty uwzględnione: {len(skipped_corrections)}")
+
+    if parse_errors:
+        print_section("BŁĘDY PARSOWANIA")
+        for filename, err in parse_errors:
+            print(f"• {filename}: {err}")
+
+    if skipped_corrections:
+        print_section("POMINIĘTE KOREKTY")
+        for item in skipped_corrections:
+            print(
+                f"• {item['filename']} | "
+                f"numer={item['numer']!r} | "
+                f"rodzaj={item['rodzaj_faktury']!r} | "
+                f"korygowana={item['nr_fa_korygowanej']!r} | "
+                f"data_korygowanej={item['data_fa_korygowanej']!r} | "
+                f"powód={item['przyczyna_korekty']!r}"
+            )
+
+    if not faktury:
+        print("\n❌ Brak poprawnie sparsowanych faktur po filtracji. Kończę.")
+        return
+    # policz faktury wg typu
+    faktury_sprzedaz = [f for f in faktury if f.meta.get("typ") == "sprzedaz"]
+    faktury_zakup = [f for f in faktury if f.meta.get("typ") == "zakup"]
+    faktury_inne = [f for f in faktury if f.meta.get("typ") not in ("sprzedaz", "zakup")]
+
+    # -----------------------------------------------------------------
+    # 2. MAPOWANIE
+    # -----------------------------------------------------------------
+    print_section("2. MAPOWANIE DO WIERSZY EWIDENCJI")
+
+    wiersze = []
+    map_errors = []
+
+    for i, faktura in enumerate(faktury, start=1):
+        try:
+            mapped_rows = mapper.map(faktura)
+            wiersze.extend(mapped_rows)
+
+            for j, w in enumerate(mapped_rows, start=1):
+                print(
+                    f"[OK] #{i}.{j} | "
+                    f"typ={w.typ!r} | "
+                    f"korekta={w.is_korekta!r} | "
+                    f"nip={w.kontrahent_nip!r} | "
+                    f"nazwa={w.kontrahent_nazwa!r} | "
+                    f"netto={w.netto} | "
+                    f"vat={w.vat} | "
+                    f"stawka={w.stawka!r} | "
+                    f"nr_ksef={w.nr_ksef!r} | "
+                    f"dokument={w.dokument!r} | "
+                    f"gtu={w.gtu!r} | "
+                    f"procedury={w.procedury!r}"
+                )
+
+        except Exception as e:
+            doc = faktura.meta.get("numer") or faktura.nr_ksef or "BRAK"
+            map_errors.append((doc, str(e)))
+            print(f"[BŁĄD] dokument={doc!r} | mapper: {e}")
+            traceback.print_exc()
+
+    if map_errors:
+        print_section("BŁĘDY MAPOWANIA")
+        for doc, err in map_errors:
+            print(f"• {doc}: {err}")
+
+    quality_csv_path = Path.home() / "Documents" / "JPK" / "REPORTS" / f"quality_report_{JPK_MIESIAC:02d}_{JPK_ROK}.csv"
+
+    write_quality_csv(
+        quality_csv_path,
+        parsed_records,
+        wiersze,
+    )
+
+    if not wiersze:
+        print("\n❌ Brak poprawnie zmapowanych wierszy. Kończę.")
+        return
+    # -----------------------------------------------------------------
+    # 3. PODZIAŁ NA SPRZEDAŻ / ZAKUP
+    # -----------------------------------------------------------------
+    print_section("3. PODZIAŁ NA SPRZEDAŻ / ZAKUP")
+
+    sprzedaz_we = [w for w in wiersze if w.typ == "sprzedaz"]
+    zakupy_we = [w for w in wiersze if w.typ == "zakup"]
+    inne_we = [w for w in wiersze if w.typ not in ("sprzedaz", "zakup")]
+
+    print(f"Sprzedaż: {len(sprzedaz_we)}")
+    print(f"Zakup:    {len(zakupy_we)}")
+    print(f"Inne:     {len(inne_we)}")
+
+    if inne_we:
+        print("\n⚠️ Wykryto wiersze z nieobsługiwanym typem:")
+        for w in inne_we:
+            print(f"• dokument={w.dokument!r}, typ={w.typ!r}, " f"nip={w.kontrahent_nip!r}, nr_ksef={w.nr_ksef!r}")
+
+    # -----------------------------------------------------------------
+    # 4. BUDOWA JPK
+    # -----------------------------------------------------------------
+    print_section("4. BUDOWA JPK")
+
+    builder = JPKBuilderPROPlus(rok=JPK_ROK, miesiac=JPK_MIESIAC, podmiot=PODMIOT)
+
+    try:
+        jpk_dict = builder.build(sprzedaz_we, zakupy_we)
+        print("[OK] Zbudowano strukturę JPK.")
+    except Exception as e:
+        print(f"❌ Błąd podczas budowy JPK: {e}")
+        traceback.print_exc()
+        return
+
+    # -----------------------------------------------------------------
+    # 5. ADAPTACJA I GENEROWANIE XML
+    # -----------------------------------------------------------------
+    print_section("5. ADAPTACJA I GENEROWANIE XML")
+
+    try:
+        jpk_model = dict_to_jpk_model(jpk_dict)
+        generator = JPKGeneratorPRO()
+        generator.generate(jpk_model, OUTPUT_XML)
+        print(f"[OK] Wygenerowano: {OUTPUT_XML}")
+    except Exception as e:
+        print(f"❌ Błąd podczas generowania XML: {e}")
+        traceback.print_exc()
+        return
+
+    # -----------------------------------------------------------------
+    # 6. WALIDACJA XSD
+    # -----------------------------------------------------------------
+    print_section("6. WALIDACJA XSD")
+
+    try:
+        validate_jpk(OUTPUT_XML, XSD_PATH)
+    except Exception as e:
+        print(f"❌ Błąd podczas walidacji JPK: {e}")
+        traceback.print_exc()
+
+    # -----------------------------------------------------------------
+    # 7. KONWERSJA DO HTML
+    # -----------------------------------------------------------------
+    converter = JPK2HTML(OUTPUT_XML, HTML_DIR)
+    html_file = converter.convert()
+
+    # -----------------------------------------------------------------
+    # 8. PODSUMOWANIE I RAPORT JAKOŚCI
+    # -----------------------------------------------------------------
+    print_section("8. PODSUMOWANIE")
+
+    print(f"Plik XML w katalogu:            {numer}")
+    print(f"Miesiąc:                        {JPK_MIESIAC}")
+    print(f"Rok:                            {JPK_ROK}")
+
+    if BATCH_DIR:
+        print(f"Batch źródłowy:                 {BATCH_DIR}")
+
+    if BATCH_MANIFEST:
+        batch_info = BATCH_MANIFEST.get("batch", {})
+        print(f"Batch ID:                       {batch_info.get('batch_id')}")
+        print(f"Faktur wg manifestu:            {batch_info.get('invoice_count')}")
+
+    print(f"Liczba plików wejściowych:      {len(paths)}")
+    print(f"Poprawnie sparsowane faktury:   {len(faktury)}")
+    print(f"Poprawnie zmapowane wiersze:    {len(wiersze)}")
+    print(f"Faktury sprzedażowe:            {len(faktury_sprzedaz)}")
+    print(f"Faktury zakupowe:               {len(faktury_zakup)}")
+    print(f"Faktury inne:                   {len(faktury_inne)}")
+
+    print(f"Wiersze sprzedaży:              {len(sprzedaz_we)}")
+    print(f"Wiersze zakupu:                 {len(zakupy_we)}")
+
+    if ENABLE_DATE_FILTER:
+        print(f"Pominięte po dacie:             {len(skipped_by_date)}")
+
+    print(f"Pominięte korekty:              {len(skipped_corrections)}")
+    print(f"XML-e pominięte jako nie-wejściowe: {quality_stats['input_xml_skipped']}")
+
+    print("")
+    print("---- RAPORT JAKOŚCI DANYCH ----")
+
+    print(f"NrKSeF z XML:                   {quality_stats['nr_ksef_xml']}")
+    print(f"NrKSeF z nazwy pliku:           {quality_stats['nr_ksef_filename']}")
+    print(f"Bez NrKSeF:                     {quality_stats['nr_ksef_missing']}")
+
+    print(f"Faktury z GTU:                  {quality_stats['with_gtu']}")
+    print(f"Faktury z procedurami:          {quality_stats['with_procedury']}")
+    print(f"Ostrzeżenia kontroli sum:       {quality_stats['sum_warning']}")
+    print(f"Wykryte korekty:                {quality_stats['korekty']}")
+    print(f"Pominięte duplikaty:            {quality_stats['duplicates_skipped']}")
+
+    print("")
+    print(f"Plik wynikowy:                  {OUTPUT_XML}")
+    print(f"Podgląd HTML zapisany jako:     {html_file}")
+
+
+if __name__ == "__main__":
+    main()
+
+===== FILE END: ksef2jpk/main.py =====
+
+
+===== FILE START: .bandit =====
+
+[bandit]
+recursive = True
+
+exclude =
+    outbound,
+    tools,
+    __pycache__,
+    validator/xsd
+
+skips = B101,B404,B603,B607,B110,B112
+
+===== FILE END: .bandit =====
+
+
+===== FILE START: config/gtu_rules.yaml =====
+
+GTU_06:
+  - laptop
+  - telefon
+  - smartfon
+  - komputer
+  - tablet
+
+GTU_07:
+  - samochód
+  - pojazd
+  - motocykl
+
+GTU_12:
+  - consulting
+  - doradztwo
+  - marketing
+  - reklama
+  - programistyczne
+  - księgowość
+  - licencja
+  - saas
+  - ebook
+
+PROCEDURY:
+  MPP:
+    - mechanizm podzielonej płatności
+
+  TP:
+    - podmiot powiązany
+
+===== FILE END: config/gtu_rules.yaml =====
+
+
+===== FILE START: config_example.json =====
+
+{
+  "input_dir": "data/xml",
+  "xml_dir": "output/xml",
+  "html_dir": "output/html",
+  "xsd_path": "validator/JPK_V7M_3.xsd",
+
+  "jpk_rok": 2026,
+  "jpk_miesiac": 4,
+
+  "enable_date_filter": true,
+
+  "output_file_pattern": "JPK_{numer}_{rok}.xml",
+
+  "podmiot": {
+    "nip": "0000000000",
+    "nazwa": "Example Company",
+    "kod_urzedu": "0000"
+  }
+}
+
+===== FILE END: config_example.json =====
+
+
+===== FILE START: create-venv.ps1 =====
+
+param(
+    [switch]$Force,
+    [switch]$Rebuild,
+    [string]$PythonPath = "python"
+)
+
+Write-Host "=== Python venv manager ===" -ForegroundColor Cyan
+
+$project = Get-Location
+$venvPath = Join-Path $project "venv"
+$activatePath = Join-Path $venvPath "Scripts\activate"
+
+Write-Host "Project directory: $project"
+
+# 1. Rebuild: remove venv completely
+if ($Rebuild) {
+    if (Test-Path $venvPath) {
+        Write-Host "Rebuild requested. Removing existing venv..." -ForegroundColor Yellow
+        Remove-Item -Recurse -Force $venvPath
+    }
+}
+
+# 2. Create venv if missing or forced
+if (-not (Test-Path $venvPath) -or $Force) {
+    if ($Force -and (Test-Path $venvPath)) {
+        Write-Host "Force enabled. Removing existing venv..." -ForegroundColor Yellow
+        Remove-Item -Recurse -Force $venvPath
+    }
+
+    Write-Host "Creating venv using: $PythonPath" -ForegroundColor Green
+    & $PythonPath -m venv venv
+
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "ERROR: Failed to create venv. Check PythonPath." -ForegroundColor Red
+        exit 1
+    }
+} else {
+    Write-Host "venv already exists. Use -Force or -Rebuild to recreate." -ForegroundColor Yellow
+}
+
+# 3. Activate venv
+if (Test-Path $activatePath) {
+    Write-Host "Activating venv..." -ForegroundColor Green
+    & $activatePath
+} else {
+    Write-Host "ERROR: Activation script not found." -ForegroundColor Red
+    exit 1
+}
+
+# 4. Create requirements.txt if missing
+$reqFile = Join-Path $project "requirements.txt"
+
+if (-not (Test-Path $reqFile)) {
+    Write-Host "Generating requirements.txt..." -ForegroundColor Green
+    pip freeze > $reqFile
+} else {
+    Write-Host "requirements.txt already exists." -ForegroundColor Yellow
+}
+
+Write-Host "Done. venv is active." -ForegroundColor Cyan
+
+===== FILE END: create-venv.ps1 =====
 
 
 ===== FILE START: ISSUES_BACKLOG.md =====
@@ -1274,506 +3588,6 @@ Projekt zakłada jedną wersję XSD, ale MF aktualizuje schemy.
 ===== FILE END: ISSUES_BACKLOG.md =====
 
 
-===== FILE START: README.md =====
-
-# KSEF2JPK
-
-## Generator JPK_V7M z faktur KSeF
-
-Narzędzie w **Pythonie** do budowy pliku **JPK_V7M** na podstawie faktur XML pobranych z **KSeF**.
-
-Program analizuje faktury KSeF, mapuje dane do ewidencji VAT i generuje poprawny plik **JPK_V7M XML zgodny ze schemą Ministerstwa Finansów**.
-
----
-
-# Funkcje
-
-Program:
-
-* parsuje faktury XML z KSeF
-* rozpoznaje **sprzedaż / zakup**
-* mapuje dane do **ewidencji VAT**
-* buduje strukturę **JPK_V7M**
-* generuje XML zgodny z **XSD MF**
-* waliduje plik względem schemy
-* generuje **podgląd HTML JPK**
-* generuje **raport jakości danych**
-
----
-
-# Pipeline
-
-```
-KSeF XML
-   ↓
-parser
-   ↓
-klasyfikacja VAT
-   ↓
-mapowanie ewidencji
-   ↓
-budowa JPK
-   ↓
-generator XML
-   ↓
-walidacja XSD
-   ↓
-podgląd HTML
-```
-
----
-
-# Diagram działania
-
-```mermaid
-flowchart TD
-
-A[KSeF XML] --> B[KSeF Parser]
-
-B --> C[Klasyfikacja VAT]
-C --> C1[Sprzedaż]
-C --> C2[Zakup]
-
-C1 --> D[Mapper JPK]
-C2 --> D
-
-D --> E[Wiersze ewidencji VAT]
-
-E --> F[Builder JPK]
-F --> G[Generator XML]
-
-G --> H[JPK_V7M XML]
-H --> I[Walidacja XSD]
-
-H --> J[Podgląd HTML]
-```
-
----
-
-# Obsługiwane elementy
-
-✔ sprzedaż / zakup
-✔ GTU
-✔ procedury (informacyjne)
-✔ kontrola sum faktury
-✔ rozpoznanie korekt
-✔ raport jakości danych
-
----
-
-## Struktura projektu
-
-```
-ksef2jpk/
-│
-├── main.py
-│   Główny pipeline programu:
-│   - wczytanie konfiguracji
-│   - parsowanie faktur
-│   - klasyfikacja VAT
-│   - budowa JPK
-│   - walidacja XSD
-│   - raport jakości
-│
-├── config.json
-│   Konfiguracja systemu:
-│   - katalog wejściowy XML
-│   - katalog wynikowy JPK
-│   - ścieżka do XSD
-│   - dane podatnika
-│
-├── parser/
-│   └── ksef_parser.py
-│       Parser faktur KSeF XML
-│
-├── classifier/
-│   └── jpk_flags.py
-│       Klasyfikacja podatkowa:
-│       - sprzedaż / zakup
-│       - GTU
-│       - procedury (MPP itp.)
-│
-├── mapper/
-│   └── jpk_mapper.py
-│       Mapowanie faktur do wierszy ewidencji VAT
-│
-├── builder/
-│   └── jpk_builder.py
-│       Budowa struktury JPK
-│
-├── adapter/
-│   └── jpk_adapter.py
-│       Konwersja danych do modelu JPK
-│
-├── generator/
-│   └── jpk_generator.py
-│       Generowanie pliku XML JPK_V7M
-│
-├── validator/
-│   ├── validate_jpk.py
-│   └── JPK_V7M_3.xsd
-│       Walidacja względem schemy MF
-│
-├── model/
-│   ├── faktura_model.py
-│   ├── jpk_model.py
-│   └── deklaracja_model.py
-│
-└── utils/
-    ├── ksef_number.py
-    ├── policz_xml_w_katalogu.py
-    └── jpk2html.py
-```
-
-
-# Integracja z ksef-sync
-
-Program może czytać faktury bezpośrednio z **batcha wygenerowanego przez ksef-sync**.
-
-Przykład katalogu:
-
-```
-ksef-sync/data/batches/
-   20260424T123004Z/
-      invoices/
-      pdf/
-      logs/
-      manifest.json
-```
-
-Wtedy `input_dir` wskazuje na:
-
-```
-.../batches/<batch_id>/invoices
-```
-
----
-
-# Konfiguracja
-
-Projekt wymaga pliku:
-
-```
-config.json
-```
-
-Przykład:
-
-```json
-{
-  "input_dir": "C:/KSeF/XML",
-  "xml_dir": "C:/JPK/XML",
-  "html_dir": "C:/JPK/HTML",
-  "xsd_path": "validator/JPK_V7M_3.xsd",
-
-  "jpk_rok": 2026,
-  "jpk_miesiac": 4,
-
-  "enable_date_filter": true,
-
-  "output_file_pattern": "JPK_{podatnik}_{miesiac}_{rok}.xml",
-
-  "podmiot": {
-    "nip": "0000000000",
-    "nazwa": "Example Company",
-    "kod_urzedu": "0000"
-  }
-}
-```
-
-Najważniejsze pola:
-
-| pole        | znaczenie                     |
-| ----------- | ----------------------------- |
-| input_dir   | katalog z fakturami XML       |
-| xml_dir     | katalog wynikowych plików JPK |
-| html_dir    | katalog podglądu HTML         |
-| xsd_path    | ścieżka do schemy MF          |
-| podmiot.nip | NIP podatnika                 |
-
----
-
-# Uruchomienie
-
-W katalogu projektu:
-
-```
-python -m ksef2jpk.main
-```
-
----
-
-# Wynik działania
-
-Program generuje:
-
-```
-JPK/XML/
-   JPK_xxx.xml
-
-JPK/HTML/
-   JPK_xxx.html
-```
-
-oraz raport w konsoli zawierający:
-
-* podsumowanie przetworzonych faktur
-* kontrolę sum
-* raport jakości danych
-* informację o wykrytych korektach
-
----
-
-# Raport jakości danych
-
-Przykład:
-
-```
-Liczba plików wejściowych:      4
-Poprawnie sparsowane faktury:   4
-Poprawnie zmapowane wiersze:    4
-
-Wiersze sprzedaży:              1
-Wiersze zakupu:                 3
-
----- RAPORT JAKOŚCI DANYCH ----
-
-NrKSeF z XML:                   0
-NrKSeF z nazwy pliku:           4
-Bez NrKSeF:                     0
-
-Faktury z GTU:                  3
-Faktury z procedurami:          1
-
-Ostrzeżenia kontroli sum:       0
-Wykryte korekty:                0
-```
-
----
-
-# Filtr okresu JPK
-
-Jeżeli w `config.json`:
-
-```
-enable_date_filter = true
-```
-
-program uwzględnia tylko faktury z okresu:
-
-```
-rok / miesiąc
-```
-
-Logika dat:
-
-| typ      | używana data   |
-| -------- | -------------- |
-| sprzedaż | data_sprzedazy |
-| zakup    | data_wplywu    |
-
----
-
-# Korekty
-
-Parser wykrywa korekty:
-
-```
-RodzajFaktury = KOR
-```
-
-Korekty są:
-
-✔ wykrywane
-✔ raportowane
-
-ale **nie są jeszcze księgowane w JPK**.
-
----
-
-# Walidacja
-
-Wygenerowany plik JPK jest walidowany względem:
-
-```
-XSD Ministerstwa Finansów
-```
-
-Jeżeli walidacja przejdzie:
-
-```
-✔ JPK jest poprawny zgodnie z XSD MF
-```
-
----
-
-# Wymagania
-
-Python:
-
-```
-Python 3.10+
-```
-
-Biblioteki:
-
-```
-standard library
-```
-
-(brak zewnętrznych zależności)
-
----
-
-# Status projektu
-
-```
-Wersja: MVP stabilne
-```
-
-Funkcjonalność:
-
-✔ generowanie poprawnego JPK
-✔ walidacja XSD
-✔ raport jakości danych
-
----
-
-# Autor
-
-Projekt narzędzia do automatycznego generowania plików **JPK_V7M** na podstawie faktur XML z **KSeF**.
-
-===== FILE END: README.md =====
-
-
-===== FILE START: check.ps1 =====
-
-# ============================================
-# CHECK.PS1 — testy + lint + format + security
-# ============================================
-
-$ErrorActionPreference = "Stop"
-
-$src = "ksef2jpk"
-
-if (-not (Test-Path $src)) {
-    Write-Host "Źródło nie istnieje: $src" -ForegroundColor Red
-    exit 1
-}
-
-Write-Host "=== PYTEST ===" -ForegroundColor Cyan
-python -m pytest -v
-if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-Write-Host "`n=== RUFF ===" -ForegroundColor Cyan
-python -m ruff check $src
-if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-Write-Host "`n=== BLACK (check) ===" -ForegroundColor Cyan
-python -m black --check $src
-if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-Write-Host "`n=== BANDIT ===" -ForegroundColor Cyan
-python -m bandit -r $src
-if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-Write-Host "`nWszystko OK ✔️" -ForegroundColor Green
-exit 0
-
-===== FILE END: check.ps1 =====
-
-
-===== FILE START: config_example.json =====
-
-{
-  "input_dir": "data/xml",
-  "xml_dir": "output/xml",
-  "html_dir": "output/html",
-  "xsd_path": "validator/JPK_V7M_3.xsd",
-
-  "jpk_rok": 2026,
-  "jpk_miesiac": 4,
-
-  "enable_date_filter": true,
-
-  "output_file_pattern": "JPK_{numer}_{rok}.xml",
-
-  "podmiot": {
-    "nip": "0000000000",
-    "nazwa": "Example Company",
-    "kod_urzedu": "0000"
-  }
-}
-
-===== FILE END: config_example.json =====
-
-
-===== FILE START: create-venv.ps1 =====
-
-param(
-    [switch]$Force,
-    [switch]$Rebuild,
-    [string]$PythonPath = "python"
-)
-
-Write-Host "=== Python venv manager ===" -ForegroundColor Cyan
-
-$project = Get-Location
-$venvPath = Join-Path $project "venv"
-$activatePath = Join-Path $venvPath "Scripts\activate"
-
-Write-Host "Project directory: $project"
-
-# 1. Rebuild: remove venv completely
-if ($Rebuild) {
-    if (Test-Path $venvPath) {
-        Write-Host "Rebuild requested. Removing existing venv..." -ForegroundColor Yellow
-        Remove-Item -Recurse -Force $venvPath
-    }
-}
-
-# 2. Create venv if missing or forced
-if (-not (Test-Path $venvPath) -or $Force) {
-    if ($Force -and (Test-Path $venvPath)) {
-        Write-Host "Force enabled. Removing existing venv..." -ForegroundColor Yellow
-        Remove-Item -Recurse -Force $venvPath
-    }
-
-    Write-Host "Creating venv using: $PythonPath" -ForegroundColor Green
-    & $PythonPath -m venv venv
-
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "ERROR: Failed to create venv. Check PythonPath." -ForegroundColor Red
-        exit 1
-    }
-} else {
-    Write-Host "venv already exists. Use -Force or -Rebuild to recreate." -ForegroundColor Yellow
-}
-
-# 3. Activate venv
-if (Test-Path $activatePath) {
-    Write-Host "Activating venv..." -ForegroundColor Green
-    & $activatePath
-} else {
-    Write-Host "ERROR: Activation script not found." -ForegroundColor Red
-    exit 1
-}
-
-# 4. Create requirements.txt if missing
-$reqFile = Join-Path $project "requirements.txt"
-
-if (-not (Test-Path $reqFile)) {
-    Write-Host "Generating requirements.txt..." -ForegroundColor Green
-    pip freeze > $reqFile
-} else {
-    Write-Host "requirements.txt already exists." -ForegroundColor Yellow
-}
-
-Write-Host "Done. venv is active." -ForegroundColor Cyan
-
-===== FILE END: create-venv.ps1 =====
-
-
 ===== FILE START: ksef2jpk/__init__.py =====
 
 [EMPTY FILE]
@@ -2120,14 +3934,17 @@ class JPKBuilderPROPlus:
                 d["P_29"] += netto
             if "OO" in procedury:
                 d["P_31"] += netto
-            if stawka is None or "ZW" in procedury or "NP" in procedury:
+            if "OO" not in procedury and (stawka is None or "ZW" in procedury or "NP" in procedury):
                 d["P_35"] += netto
 
         for w in zakupy:
             netto = float(w.netto or 0)
             vat = float(w.vat or 0)
+            procedury = set(w.procedury or [])
 
-            if vat:
+            if "IMP" in procedury:
+                d["P_45"] += netto
+            elif vat:
                 d["P_42"] += netto
                 d["P_43"] += vat
 
@@ -2172,9 +3989,7 @@ class JPKBuilderPROPlus:
         for field in base_amount_fields:
             d[field] = self._round_pln(d[field])
 
-        d["P_37"] = (
-            d["P_19"] + d["P_21"] + d["P_23"] + d["P_25"] + d["P_27"] + d["P_29"] + d["P_31"]
-        )
+        d["P_37"] = d["P_19"] + d["P_21"] + d["P_23"] + d["P_25"] + d["P_27"] + d["P_29"] + d["P_31"]
         d["P_38"] = d["P_20"] + d["P_22"] + d["P_24"]
         d["P_48"] = d["P_43"]
         d["P_51"] = max(d["P_38"] - d["P_48"], 0)
@@ -2214,7 +4029,7 @@ class JPKBuilderPROPlus:
                     "K_23": w.netto if w.stawka == 5 else 0,
                     "K_24": w.vat if w.stawka == 5 else 0,
                     "K_27": w.netto if w.stawka == 0 else 0,
-                    "K_28": 0,
+                    "K_28": 0 if "WDT" in set(w.procedury or []) else 0,
                 }
             )
 
@@ -2260,18 +4075,20 @@ class JPKBuilderPROPlus:
             else:
                 row["OFF"] = "1"
 
+            procedury = set(w.procedury or [])
+
+            is_imp = "IMP" in procedury
+
             row.update(
                 {
-                    "K_42": w.netto if w.vat else 0,
-                    "K_43": w.vat if w.vat else 0,
+                    "K_42": 0 if is_imp else (w.netto if w.vat else 0),
+                    "K_43": 0 if is_imp else (w.vat if w.vat else 0),
                     "K_44": 0,
-                    "K_45": 0,
-                    "K_46": 0,
+                    "K_45": w.netto if is_imp else 0,
+                    "K_46": w.vat if is_imp else 0,
                     "K_47": 0,
                 }
             )
-
-            procedury = set(w.procedury or [])
             if "IMP" in procedury:
                 row["IMP"] = "1"
             if "MPP" in procedury:
@@ -2300,7 +4117,13 @@ class JPKBuilderPROPlus:
         zakup_ctrl = {
             "LiczbaWierszyZakupow": len(zakup_wiersze),
             "PodatekNaliczony": round(
-                sum(float(w.get("K_43", 0)) for w in zakup_wiersze),
+                sum(
+                    float(w.get("K_43", 0))
+                    + float(w.get("K_45", 0))
+                    + float(w.get("K_46", 0))
+                    + float(w.get("K_47", 0))
+                    for w in zakup_wiersze
+                ),
                 2,
             ),
         }
@@ -2338,6 +4161,76 @@ class JPKBuilderPROPlus:
 [EMPTY FILE]
 
 ===== FILE END: ksef2jpk/classifier/__init__.py =====
+
+
+===== FILE START: ksef2jpk/classifier/gtu_classifier.py =====
+
+from pathlib import Path
+
+import yaml
+
+
+class GTUClassifier:
+    DEFAULT_RULES = {
+        "GTU_06": [
+            "telefon",
+            "smartfon",
+            "laptop",
+            "komputer",
+            "tablet",
+        ],
+        "GTU_07": [
+            "samochód",
+            "pojazd",
+            "motocykl",
+        ],
+        "GTU_12": [
+            "doradztwo",
+            "doradztwa",
+            "consulting",
+            "księgowość",
+            "marketing",
+            "reklama",
+            "programistyczne",
+            "ebook",
+            "licencja",
+            "saas",
+        ],
+    }
+
+    def __init__(self, config_path: str = "config/gtu_rules.yaml"):
+        self.rules = self._load_rules(config_path)
+
+    def _load_rules(self, config_path: str):
+        path = Path(config_path)
+
+        if not path.exists():
+            return self.DEFAULT_RULES
+
+        with open(path, encoding="utf-8") as f:
+            data = yaml.safe_load(f) or {}
+
+        rules = {}
+
+        for key, value in data.items():
+            if key == "PROCEDURY":
+                continue
+
+            if isinstance(value, list):
+                rules[key] = [str(v).lower() for v in value]
+
+        return rules or self.DEFAULT_RULES
+
+    def classify(self, text: str):
+        txt = (text or "").lower()
+
+        for gtu, keywords in self.rules.items():
+            if any(keyword in txt for keyword in keywords):
+                return gtu
+
+        return None
+
+===== FILE END: ksef2jpk/classifier/gtu_classifier.py =====
 
 
 ===== FILE START: ksef2jpk/classifier/jpk_flags.py =====
@@ -2717,9 +4610,7 @@ class JPKGeneratorPRO:
         # ----------------------------------------------------
         # ROOT
         # ----------------------------------------------------
-        root = ET.Element(
-            f"{{{ns_jpk}}}JPK", {f"{{{ns_xsi}}}schemaLocation": f"{ns_jpk} {ns_jpk}schemat.xsd"}
-        )
+        root = ET.Element(f"{{{ns_jpk}}}JPK", {f"{{{ns_xsi}}}schemaLocation": f"{ns_jpk} {ns_jpk}schemat.xsd"})
 
         # ----------------------------------------------------
         # 1. NAGŁÓWEK
@@ -2840,6 +4731,18 @@ class JPKGeneratorPRO:
         ]:
             val = getattr(jpk_model.deklaracja, pole, None)
 
+            if pole == "P_26" and not self.is_zeroish(getattr(jpk_model.deklaracja, "P_25", 0)):
+                ET.SubElement(poz, f"{{{ns_jpk}}}{pole}").text = "0"
+                continue
+
+            if pole == "P_30" and not self.is_zeroish(getattr(jpk_model.deklaracja, "P_29", 0)):
+                ET.SubElement(poz, f"{{{ns_jpk}}}{pole}").text = "0"
+                continue
+
+            if pole == "P_32" and not self.is_zeroish(getattr(jpk_model.deklaracja, "P_31", 0)):
+                ET.SubElement(poz, f"{{{ns_jpk}}}{pole}").text = "0"
+                continue
+
             if pole in required_zero_fields:
                 if val is None:
                     val = 0
@@ -2895,9 +4798,9 @@ class JPKGeneratorPRO:
                 self.add_gtu_flag(sw, ns_jpk, getattr(w, "GTU", None))
 
                 # procedury / oznaczenia
-                self.add_if_present(sw, ns_jpk, "WDT", getattr(w, "WDT", None))
-                self.add_if_present(sw, ns_jpk, "Eksport", getattr(w, "Eksport", None))
-                self.add_if_present(sw, ns_jpk, "OO", getattr(w, "OO", None))
+                # self.add_if_present(sw, ns_jpk, "WDT", getattr(w, "WDT", None))
+                # self.add_if_present(sw, ns_jpk, "Eksport", getattr(w, "Eksport", None))
+                # self.add_if_present(sw, ns_jpk, "OO", getattr(w, "OO", None))
                 # self.add_if_present(sw, ns_jpk, "MPP", getattr(w, "MPP", None))
                 self.add_if_present(sw, ns_jpk, "Marza", getattr(w, "Marza", None))
                 self.add_if_present(sw, ns_jpk, "SW", getattr(w, "SW", None))
@@ -2911,7 +4814,11 @@ class JPKGeneratorPRO:
                 self.add_if_nonzero(sw, ns_jpk, "K_23", getattr(w, "K_23", 0))
                 self.add_if_nonzero(sw, ns_jpk, "K_24", getattr(w, "K_24", 0))
                 self.add_if_nonzero(sw, ns_jpk, "K_27", getattr(w, "K_27", 0))
-                self.add_if_nonzero(sw, ns_jpk, "K_28", getattr(w, "K_28", 0))
+
+                if getattr(w, "WDT", None) or getattr(w, "Eksport", None):
+                    ET.SubElement(sw, f"{{{ns_jpk}}}K_28").text = "0"
+                else:
+                    self.add_if_nonzero(sw, ns_jpk, "K_28", getattr(w, "K_28", 0))
 
         # ----------------------------------------------------
         # SPRZEDAŻ CTRL
@@ -2963,7 +4870,7 @@ class JPKGeneratorPRO:
                 # UWAGA: GTU nie emitujemy w zakupach
                 self.add_if_present(zw, ns_jpk, "IMP", getattr(w, "IMP", None))
                 # self.add_if_present(zw, ns_jpk, "MPP", getattr(w, "MPP", None))
-                self.add_if_present(zw, ns_jpk, "OO", getattr(w, "OO", None))
+                # self.add_if_present(zw, ns_jpk, "OO", getattr(w, "OO", None))
                 self.add_if_present(zw, ns_jpk, "VAT_RR", getattr(w, "VAT_RR", None))
 
                 self.add_if_nonzero(zw, ns_jpk, "K_42", getattr(w, "K_42", 0))
@@ -3003,571 +4910,6 @@ class JPKGeneratorPRO:
 ===== FILE END: ksef2jpk/generator/jpk_generator.py =====
 
 
-===== FILE START: ksef2jpk/main.py =====
-
-import argparse
-import glob
-import json
-import os
-import traceback
-from datetime import datetime
-from pathlib import Path
-
-from ksef2jpk.adapter.jpk_adapter import dict_to_jpk_model
-from ksef2jpk.builder.jpk_builder import JPKBuilderPROPlus
-from ksef2jpk.classifier.jpk_flags import JPKFlagsClassifier
-from ksef2jpk.generator.jpk_generator import JPKGeneratorPRO
-from ksef2jpk.mapper.jpk_mapper import JPKMapperPRO
-from ksef2jpk.parser.ksef_parser import KSeFParser
-from ksef2jpk.utils.batch_loader import get_invoices_dir
-from ksef2jpk.utils.jpk2html import JPK2HTML
-from ksef2jpk.utils.policz_xml_w_katalogu import policz_xml_w_katalogu
-from ksef2jpk.utils.string_tools import safe_filename
-from ksef2jpk.validator.validate_jpk import validate_jpk
-
-# ------------------------------------------------------------
-
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DEFAULT_CONFIG_PATH = os.path.abspath(os.path.join(BASE_DIR, "..", "config.json"))
-
-
-def load_config(config_path: str) -> dict:
-    if not os.path.exists(config_path):
-        raise FileNotFoundError(f"Brak pliku konfiguracyjnego: {config_path}")
-
-    with open(config_path, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-
-def parse_args():
-    parser = argparse.ArgumentParser(description="KSeF2JPK - generator JPK z faktur KSeF")
-
-    parser.add_argument("--year", type=int, help="Rok JPK, np. 2026")
-    parser.add_argument("--month", type=int, help="Miesiąc JPK, np. 4")
-    parser.add_argument("--input-dir", help="Katalog z fakturami XML")
-    parser.add_argument("--batch-dir", help="Katalog batch z ksef-sync")
-    parser.add_argument("--config", help="Ścieżka do config.json")
-    parser.add_argument("--no-date-filter", action="store_true", help="Wyłącz filtr daty")
-
-    return parser.parse_args()
-
-
-def resolve_input_source(config: dict):
-    """
-    Obsługuje dwa tryby:
-    1. batch_dir z ksef-sync
-    2. klasyczne input_dir
-    """
-    if config.get("batch_dir"):
-        batch_root = Path(config["batch_dir"])
-        input_dir = get_invoices_dir(batch_root)
-
-        batch_dir = input_dir.parent
-        manifest_path = batch_dir / "manifest.json"
-
-        manifest = None
-        if manifest_path.exists():
-            with open(manifest_path, "r", encoding="utf-8") as f:
-                manifest = json.load(f)
-
-        return str(input_dir), batch_dir, manifest
-
-    if config.get("input_dir"):
-        return config["input_dir"], None, None
-
-    raise RuntimeError("Brak input_dir albo batch_dir w config.json")
-
-
-ARGS = parse_args()
-
-CONFIG_PATH = os.path.abspath(ARGS.config) if ARGS.config else DEFAULT_CONFIG_PATH
-CONFIG = load_config(CONFIG_PATH)
-XSD_PATH = CONFIG["xsd_path"]
-XML_DIR = CONFIG["xml_dir"]
-PODMIOT = CONFIG["podmiot"]
-HTML_DIR = CONFIG.get("html_dir", os.path.join(os.path.dirname(XML_DIR), "html"))
-
-os.makedirs(XML_DIR, exist_ok=True)
-os.makedirs(HTML_DIR, exist_ok=True)
-
-if ARGS.input_dir:
-    CONFIG["input_dir"] = ARGS.input_dir
-    CONFIG["batch_dir"] = None
-
-if ARGS.batch_dir:
-    CONFIG["batch_dir"] = ARGS.batch_dir
-    CONFIG["input_dir"] = None
-
-INPUT_DIR, BATCH_DIR, BATCH_MANIFEST = resolve_input_source(CONFIG)
-
-print("Katalog faktur wejściowych:", INPUT_DIR)
-
-if BATCH_DIR:
-    print("Batch:", BATCH_DIR)
-
-if BATCH_MANIFEST:
-    batch_info = BATCH_MANIFEST.get("batch", {})
-    print("Batch ID:", batch_info.get("batch_id"))
-    print("Faktur w manifeście:", batch_info.get("invoice_count"))
-
-
-now = datetime.now()
-
-JPK_ROK = ARGS.year or CONFIG.get("jpk_rok") or now.year
-JPK_MIESIAC = ARGS.month or CONFIG.get("jpk_miesiac") or now.month
-
-if not 1 <= int(JPK_MIESIAC) <= 12:
-    raise ValueError(f"Nieprawidłowy miesiąc: {JPK_MIESIAC}")
-
-ENABLE_DATE_FILTER = CONFIG.get("enable_date_filter", True)
-
-if ARGS.no_date_filter:
-    ENABLE_DATE_FILTER = False
-
-numer = policz_xml_w_katalogu(XML_DIR) + 1
-
-output_pattern = CONFIG.get("output_file_pattern", "JPK_{podatnik}_{miesiac}_{rok}.xml")
-
-nazwa = CONFIG["podmiot"]["nazwa"]
-podatnik_safe = safe_filename(nazwa).upper()
-
-output_filename = output_pattern.format(
-    rok=JPK_ROK, miesiac=f"{JPK_MIESIAC:02d}", podatnik=podatnik_safe
-)
-
-OUTPUT_XML = os.path.join(XML_DIR, output_filename)
-
-
-# ------------------------------------------------------------
-# HELPER: WYDRUK SEKCJI
-# ------------------------------------------------------------
-
-
-def print_section(title: str) -> None:
-    print("\n" + "=" * 80)
-    print(title)
-    print("=" * 80)
-
-
-# ------------------------------------------------------------
-# HELPER: ZAKRES OKRESU JPK
-# ------------------------------------------------------------
-
-
-def get_period_bounds(year: int, month: int):
-    from calendar import monthrange
-
-    start = datetime(year, month, 1)
-    end = datetime(year, month, monthrange(year, month)[1])
-    return start, end
-
-
-def parse_iso_date(date_txt: str):
-    if not date_txt:
-        return None
-    try:
-        return datetime.fromisoformat(date_txt[:10])
-    except ValueError:
-        return None
-
-
-def get_filter_date_for_invoice(faktura):
-    """
-    Data używana do kwalifikacji do okresu JPK.
-    - sprzedaż: data_sprzedazy, fallback data_wystawienia
-    - zakup: data_wplywu, fallback data_wystawienia
-    """
-    typ = faktura.meta.get("typ")
-
-    if typ == "sprzedaz":
-        return faktura.meta.get("data_sprzedazy") or faktura.meta.get("data_wystawienia")
-
-    if typ == "zakup":
-        return faktura.meta.get("data_wplywu") or faktura.meta.get("data_wystawienia")
-
-    return faktura.meta.get("data_wystawienia")
-
-
-def invoice_in_period(faktura, start_dt: datetime, end_dt: datetime) -> bool:
-    date_txt = get_filter_date_for_invoice(faktura)
-    dt = parse_iso_date(date_txt)
-    if dt is None:
-        return False
-    return start_dt <= dt <= end_dt
-
-
-def is_candidate_input_xml(path: str) -> bool:
-    """
-    Filtruje tylko pliki, które chcemy traktować jako wejściowe faktury KSeF.
-    Odrzuca wygenerowane JPK i pomocnicze XML-e.
-    """
-    name = os.path.basename(path).lower()
-
-    excluded_prefixes = (
-        "jpk_",
-        "wynik_",
-        "output_",
-    )
-
-    excluded_exact = {
-        "wynik_test_jpk.xml",
-    }
-
-    if name in excluded_exact:
-        return False
-
-    if name.startswith(excluded_prefixes):
-        return False
-
-    return True
-
-
-def init_quality_stats() -> dict:
-    return {
-        "nr_ksef_xml": 0,
-        "nr_ksef_filename": 0,
-        "nr_ksef_missing": 0,
-        "with_gtu": 0,
-        "with_procedury": 0,
-        "sum_warning": 0,
-        "korekty": 0,
-        "input_xml_skipped": 0,
-    }
-
-
-def update_quality_stats(stats: dict, faktura) -> None:
-    nr_ksef_source = faktura.meta.get("nr_ksef_source", "none")
-
-    if nr_ksef_source == "xml":
-        stats["nr_ksef_xml"] += 1
-    elif nr_ksef_source == "filename":
-        stats["nr_ksef_filename"] += 1
-    else:
-        stats["nr_ksef_missing"] += 1
-
-    if faktura.meta.get("gtu"):
-        stats["with_gtu"] += 1
-
-    if faktura.meta.get("procedury"):
-        stats["with_procedury"] += 1
-
-    kontrola_sum = faktura.meta.get("kontrola_sum", {})
-    if kontrola_sum and not kontrola_sum.get("all_ok", True):
-        stats["sum_warning"] += 1
-
-    if faktura.meta.get("is_korekta"):
-        stats["korekty"] += 1
-
-
-# ------------------------------------------------------------
-# MAIN
-# ------------------------------------------------------------
-
-
-def main():
-    parser = KSeFParser(PODMIOT["nip"])
-    classifier = JPKFlagsClassifier()
-    mapper = JPKMapperPRO()
-
-    all_paths = sorted(glob.glob(os.path.join(INPUT_DIR, "*.xml")))
-    paths = [p for p in all_paths if is_candidate_input_xml(p)]
-    skipped_non_input = [p for p in all_paths if not is_candidate_input_xml(p)]
-
-    if BATCH_MANIFEST:
-        manifest_count = BATCH_MANIFEST.get("batch", {}).get("invoice_count")
-        if manifest_count is not None and manifest_count != len(paths):
-            print(f"⚠️ Różnica manifest/XML: " f"manifest={manifest_count}, XML={len(paths)}")
-
-    if not paths:
-        print(f"❌ Nie znaleziono plików XML w katalogu: {INPUT_DIR}")
-        return
-
-    quality_stats = init_quality_stats()
-    quality_stats["input_xml_skipped"] = len(skipped_non_input)
-
-    period_start, period_end = get_period_bounds(JPK_ROK, JPK_MIESIAC)
-
-    # -----------------------------------------------------------------
-    # 1. PARSOWANIE + KLASYFIKACJA + OPCJONALNY FILTR DATY
-    # -----------------------------------------------------------------
-    print_section("1. PARSOWANIE FAKTUR")
-
-    faktury = []
-    parse_errors = []
-    skipped_by_date = []
-    skipped_corrections = []
-
-    for path in paths:
-        filename = os.path.basename(path)
-
-        try:
-            faktura = parser.parse(path)
-            faktura = classifier.apply_to_invoice(faktura)
-
-            update_quality_stats(quality_stats, faktura)
-
-            # ---------------------------------------------------------
-            # KOREKTY – tylko sygnał, bez wpuszczania do JPK
-            # ---------------------------------------------------------
-            if faktura.meta.get("is_korekta"):
-                skipped_corrections.append(
-                    {
-                        "filename": filename,
-                        "numer": faktura.meta.get("numer"),
-                        "rodzaj_faktury": faktura.meta.get("rodzaj_faktury"),
-                        "przyczyna_korekty": faktura.meta.get("przyczyna_korekty"),
-                        "nr_fa_korygowanej": faktura.meta.get("nr_fa_korygowanej"),
-                        "data_fa_korygowanej": faktura.meta.get("data_fa_korygowanej"),
-                        "nr_ksef": faktura.nr_ksef,
-                    }
-                )
-
-                print(
-                    f"[KOREKTA - POMINIĘTO] {filename} | "
-                    f"numer={faktura.meta.get('numer')!r} | "
-                    f"rodzaj={faktura.meta.get('rodzaj_faktury')!r} | "
-                    f"korygowana={faktura.meta.get('nr_fa_korygowanej')!r} | "
-                    f"data_korygowanej={faktura.meta.get('data_fa_korygowanej')!r} | "
-                    f"powód={faktura.meta.get('przyczyna_korekty')!r}"
-                )
-                continue
-
-            if ENABLE_DATE_FILTER:
-                if not invoice_in_period(faktura, period_start, period_end):
-                    skip_date = get_filter_date_for_invoice(faktura)
-                    skipped_by_date.append((filename, skip_date, faktura.meta.get("typ")))
-
-                    print(
-                        f"[POMINIĘTO] {filename} | "
-                        f"typ={faktura.meta.get('typ')!r} | "
-                        f"data_filtra={skip_date!r}"
-                    )
-                    continue
-
-            faktury.append(faktura)
-
-            kontrola_sum = faktura.meta.get("kontrola_sum", {})
-            print(
-                f"[OK] {filename} | "
-                f"typ={faktura.meta.get('typ')!r} | "
-                f"nr_ksef={faktura.nr_ksef!r} | "
-                f"nip_sprzedawcy={faktura.meta.get('nip_sprzedawcy')!r} | "
-                f"nip_nabywcy={faktura.meta.get('nip_nabywcy')!r} | "
-                f"data_wystawienia={faktura.meta.get('data_wystawienia')!r} | "
-                f"data_filtra={get_filter_date_for_invoice(faktura)!r} | "
-                f"pozycji={len(faktura.pozycje or [])} | "
-                f"procedury={faktura.meta.get('procedury', [])!r} | "
-                f"gtu={faktura.meta.get('gtu')!r} | "
-                f"kontrola_sum={kontrola_sum.get('all_ok')!r}"
-            )
-
-        except Exception as e:
-            parse_errors.append((filename, str(e)))
-            print(f"[BŁĄD] {filename} | parser/classifier: {e}")
-            traceback.print_exc()
-
-    print(f"\nZaładowano poprawnie {len(faktury)} z {len(paths)} faktur wejściowych.")
-
-    if ENABLE_DATE_FILTER:
-        print(f"Filtr okresu JPK: WŁĄCZONY " f"({period_start.date()} -> {period_end.date()})")
-        print(f"Pominięto po dacie: {len(skipped_by_date)}")
-    else:
-        print("Filtr okresu JPK: WYŁĄCZONY")
-
-    print(f"Pominięte korekty: {len(skipped_corrections)}")
-
-    if parse_errors:
-        print_section("BŁĘDY PARSOWANIA")
-        for filename, err in parse_errors:
-            print(f"• {filename}: {err}")
-
-    if skipped_corrections:
-        print_section("POMINIĘTE KOREKTY")
-        for item in skipped_corrections:
-            print(
-                f"• {item['filename']} | "
-                f"numer={item['numer']!r} | "
-                f"rodzaj={item['rodzaj_faktury']!r} | "
-                f"korygowana={item['nr_fa_korygowanej']!r} | "
-                f"data_korygowanej={item['data_fa_korygowanej']!r} | "
-                f"powód={item['przyczyna_korekty']!r}"
-            )
-
-    if not faktury:
-        print("\n❌ Brak poprawnie sparsowanych faktur po filtracji. Kończę.")
-        return
-    # policz faktury wg typu
-    faktury_sprzedaz = [f for f in faktury if f.meta.get("typ") == "sprzedaz"]
-    faktury_zakup = [f for f in faktury if f.meta.get("typ") == "zakup"]
-    faktury_inne = [f for f in faktury if f.meta.get("typ") not in ("sprzedaz", "zakup")]
-
-    # -----------------------------------------------------------------
-    # 2. MAPOWANIE
-    # -----------------------------------------------------------------
-    print_section("2. MAPOWANIE DO WIERSZY EWIDENCJI")
-
-    wiersze = []
-    map_errors = []
-
-    for i, faktura in enumerate(faktury, start=1):
-        try:
-            mapped_rows = mapper.map(faktura)
-            wiersze.extend(mapped_rows)
-
-            for j, w in enumerate(mapped_rows, start=1):
-                print(
-                    f"[OK] #{i}.{j} | "
-                    f"typ={w.typ!r} | "
-                    f"nip={w.kontrahent_nip!r} | "
-                    f"nazwa={w.kontrahent_nazwa!r} | "
-                    f"netto={w.netto} | "
-                    f"vat={w.vat} | "
-                    f"stawka={w.stawka!r} | "
-                    f"nr_ksef={w.nr_ksef!r} | "
-                    f"dokument={w.dokument!r} | "
-                    f"gtu={w.gtu!r} | "
-                    f"procedury={w.procedury!r}"
-                )
-
-        except Exception as e:
-            doc = faktura.meta.get("numer") or faktura.nr_ksef or "BRAK"
-            map_errors.append((doc, str(e)))
-            print(f"[BŁĄD] dokument={doc!r} | mapper: {e}")
-            traceback.print_exc()
-
-    if map_errors:
-        print_section("BŁĘDY MAPOWANIA")
-        for doc, err in map_errors:
-            print(f"• {doc}: {err}")
-
-    if not wiersze:
-        print("\n❌ Brak poprawnie zmapowanych wierszy. Kończę.")
-        return
-
-    # -----------------------------------------------------------------
-    # 3. PODZIAŁ NA SPRZEDAŻ / ZAKUP
-    # -----------------------------------------------------------------
-    print_section("3. PODZIAŁ NA SPRZEDAŻ / ZAKUP")
-
-    sprzedaz_we = [w for w in wiersze if w.typ == "sprzedaz"]
-    zakupy_we = [w for w in wiersze if w.typ == "zakup"]
-    inne_we = [w for w in wiersze if w.typ not in ("sprzedaz", "zakup")]
-
-    print(f"Sprzedaż: {len(sprzedaz_we)}")
-    print(f"Zakup:    {len(zakupy_we)}")
-    print(f"Inne:     {len(inne_we)}")
-
-    if inne_we:
-        print("\n⚠️ Wykryto wiersze z nieobsługiwanym typem:")
-        for w in inne_we:
-            print(
-                f"• dokument={w.dokument!r}, typ={w.typ!r}, "
-                f"nip={w.kontrahent_nip!r}, nr_ksef={w.nr_ksef!r}"
-            )
-
-    # -----------------------------------------------------------------
-    # 4. BUDOWA JPK
-    # -----------------------------------------------------------------
-    print_section("4. BUDOWA JPK")
-
-    builder = JPKBuilderPROPlus(rok=JPK_ROK, miesiac=JPK_MIESIAC, podmiot=PODMIOT)
-
-    try:
-        jpk_dict = builder.build(sprzedaz_we, zakupy_we)
-        print("[OK] Zbudowano strukturę JPK.")
-    except Exception as e:
-        print(f"❌ Błąd podczas budowy JPK: {e}")
-        traceback.print_exc()
-        return
-
-    # -----------------------------------------------------------------
-    # 5. ADAPTACJA I GENEROWANIE XML
-    # -----------------------------------------------------------------
-    print_section("5. ADAPTACJA I GENEROWANIE XML")
-
-    try:
-        jpk_model = dict_to_jpk_model(jpk_dict)
-        generator = JPKGeneratorPRO()
-        generator.generate(jpk_model, OUTPUT_XML)
-        print(f"[OK] Wygenerowano: {OUTPUT_XML}")
-    except Exception as e:
-        print(f"❌ Błąd podczas generowania XML: {e}")
-        traceback.print_exc()
-        return
-
-    # -----------------------------------------------------------------
-    # 6. WALIDACJA XSD
-    # -----------------------------------------------------------------
-    print_section("6. WALIDACJA XSD")
-
-    try:
-        validate_jpk(OUTPUT_XML, XSD_PATH)
-    except Exception as e:
-        print(f"❌ Błąd podczas walidacji JPK: {e}")
-        traceback.print_exc()
-
-    # -----------------------------------------------------------------
-    # 7. KONWERSJA DO HTML
-    # -----------------------------------------------------------------
-    converter = JPK2HTML(OUTPUT_XML, HTML_DIR)
-    html_file = converter.convert()
-
-    # -----------------------------------------------------------------
-    # 8. PODSUMOWANIE I RAPORT JAKOŚCI
-    # -----------------------------------------------------------------
-    print_section("8. PODSUMOWANIE")
-
-    print(f"Plik XML w katalogu:            {numer}")
-    print(f"Miesiąc:                        {JPK_MIESIAC}")
-    print(f"Rok:                            {JPK_ROK}")
-
-    if BATCH_DIR:
-        print(f"Batch źródłowy:                 {BATCH_DIR}")
-
-    if BATCH_MANIFEST:
-        batch_info = BATCH_MANIFEST.get("batch", {})
-        print(f"Batch ID:                       {batch_info.get('batch_id')}")
-        print(f"Faktur wg manifestu:            {batch_info.get('invoice_count')}")
-
-    print(f"Liczba plików wejściowych:      {len(paths)}")
-    print(f"Poprawnie sparsowane faktury:   {len(faktury)}")
-    print(f"Poprawnie zmapowane wiersze:    {len(wiersze)}")
-    print(f"Faktury sprzedażowe:            {len(faktury_sprzedaz)}")
-    print(f"Faktury zakupowe:               {len(faktury_zakup)}")
-    print(f"Faktury inne:                   {len(faktury_inne)}")
-
-    print(f"Wiersze sprzedaży:              {len(sprzedaz_we)}")
-    print(f"Wiersze zakupu:                 {len(zakupy_we)}")
-
-    if ENABLE_DATE_FILTER:
-        print(f"Pominięte po dacie:             {len(skipped_by_date)}")
-
-    print(f"Pominięte korekty:              {len(skipped_corrections)}")
-    print(f"XML-e pominięte jako nie-wejściowe: {quality_stats['input_xml_skipped']}")
-
-    print("")
-    print("---- RAPORT JAKOŚCI DANYCH ----")
-
-    print(f"NrKSeF z XML:                   {quality_stats['nr_ksef_xml']}")
-    print(f"NrKSeF z nazwy pliku:           {quality_stats['nr_ksef_filename']}")
-    print(f"Bez NrKSeF:                     {quality_stats['nr_ksef_missing']}")
-
-    print(f"Faktury z GTU:                  {quality_stats['with_gtu']}")
-    print(f"Faktury z procedurami:          {quality_stats['with_procedury']}")
-    print(f"Ostrzeżenia kontroli sum:       {quality_stats['sum_warning']}")
-    print(f"Wykryte korekty:                {quality_stats['korekty']}")
-
-    print("")
-    print(f"Plik wynikowy:                  {OUTPUT_XML}")
-    print(f"Podgląd HTML zapisany jako:     {html_file}")
-
-
-if __name__ == "__main__":
-    main()
-
-===== FILE END: ksef2jpk/main.py =====
-
-
 ===== FILE START: ksef2jpk/mapper/__init__.py =====
 
 [EMPTY FILE]
@@ -3596,8 +4938,7 @@ class JPKMapperPRO:
 
         if typ not in ("sprzedaz", "zakup"):
             raise ValueError(
-                f"Nieznany typ faktury dla dokumentu: "
-                f"{faktura.meta.get('numer') or faktura.nr_ksef or 'BRAK'}"
+                f"Nieznany typ faktury dla dokumentu: " f"{faktura.meta.get('numer') or faktura.nr_ksef or 'BRAK'}"
             )
 
         if typ == "sprzedaz":
@@ -3631,7 +4972,7 @@ class JPKMapperPRO:
             vat = round(sum((p.vat or 0) for p in grupa_pozycji), 2)
 
             # GTU z pozycji
-            gtu_values = sorted({p.gtu for p in grupa_pozycji if p.gtu})
+            gtu_values = sorted({(p.gtu_manual or p.gtu) for p in grupa_pozycji if (p.gtu_manual or p.gtu)})
 
             if len(gtu_values) == 1:
                 gtu = gtu_values[0]
@@ -3644,7 +4985,7 @@ class JPKMapperPRO:
 
             # Procedury z pozycji
             procedury_from_positions = sorted(
-                {proc for p in grupa_pozycji for proc in (p.procedury or []) if proc}
+                {proc for p in grupa_pozycji for proc in ((p.procedury_manual or p.procedury) or []) if proc}
             )
 
             if procedury_from_positions:
@@ -3668,6 +5009,11 @@ class JPKMapperPRO:
                     data_wplywu=data_wplywu,
                     gtu=gtu,
                     procedury=procedury,
+                    is_korekta=bool(faktura.meta.get("is_korekta")),
+                    rodzaj_faktury=faktura.meta.get("rodzaj_faktury"),
+                    przyczyna_korekty=faktura.meta.get("przyczyna_korekty"),
+                    nr_fa_korygowanej=faktura.meta.get("nr_fa_korygowanej"),
+                    data_fa_korygowanej=faktura.meta.get("data_fa_korygowanej"),
                 )
             )
 
@@ -3793,6 +5139,8 @@ class Pozycja:
     stawka: float | None = None
     gtu: str | None = None
     procedury: list[str] | None = None
+    gtu_manual: str | None = None
+    procedury_manual: list[str] | None = None
 
 
 @dataclass
@@ -3865,7 +5213,7 @@ class JPKModel:
 class WierszEwidencji:
     def __init__(
         self,
-        typ,  # "sprzedaz" lub "zakup"
+        typ,
         netto,
         vat,
         stawka,
@@ -3878,24 +5226,30 @@ class WierszEwidencji:
         data_wplywu=None,
         gtu=None,
         procedury=None,
+        is_korekta=False,
+        rodzaj_faktury=None,
+        przyczyna_korekty=None,
+        nr_fa_korygowanej=None,
+        data_fa_korygowanej=None,
     ):
         self.typ = typ
         self.netto = netto
         self.vat = vat
         self.stawka = stawka
-
         self.kontrahent_nip = kontrahent_nip
         self.kontrahent_nazwa = kontrahent_nazwa
-
         self.nr_ksef = nr_ksef
         self.dokument = dokument
-
         self.data_wystawienia = data_wystawienia
         self.data_sprzedazy = data_sprzedazy
         self.data_wplywu = data_wplywu
-
         self.gtu = gtu
         self.procedury = procedury or []
+        self.is_korekta = is_korekta
+        self.rodzaj_faktury = rodzaj_faktury
+        self.przyczyna_korekty = przyczyna_korekty
+        self.nr_fa_korygowanej = nr_fa_korygowanej
+        self.data_fa_korygowanej = data_fa_korygowanej
 
 ===== FILE END: ksef2jpk/model/jpk_model.py =====
 
@@ -4023,13 +5377,45 @@ from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 
 from defusedxml import ElementTree as ET
 
+from ksef2jpk.classifier.gtu_classifier import GTUClassifier
 from ksef2jpk.model.faktura_model import FakturaModel, Kontrahent, Pozycja
 from ksef2jpk.utils.ksef_number import extract_ksef_number_from_filename
 
 
 class KSeFParser:
+    EU_COUNTRIES = {
+        "AT",
+        "BE",
+        "BG",
+        "CY",
+        "CZ",
+        "DE",
+        "DK",
+        "EE",
+        "ES",
+        "FI",
+        "FR",
+        "GR",
+        "HR",
+        "HU",
+        "IE",
+        "IT",
+        "LT",
+        "LU",
+        "LV",
+        "MT",
+        "NL",
+        "PL",
+        "PT",
+        "RO",
+        "SE",
+        "SI",
+        "SK",
+    }
+
     def __init__(self, my_nip: str):
         self.MY_NIP = str(my_nip or "").strip()
+        self.gtu_classifier = GTUClassifier()
 
     def _text(self, el):
         if el is None or el.text is None:
@@ -4077,11 +5463,94 @@ class KSeFParser:
         ]
         return self._find_text_first(root, candidates, ns)
 
+    def _podmiot_kraj(self, root, podmiot_tag, ns):
+        candidates = [
+            f".//fa:{podmiot_tag}/fa:Adres/fa:KodKraju",
+            f".//fa:{podmiot_tag}//fa:KodKraju",
+        ]
+        return self._find_text_first(root, candidates, ns) or "PL"
+
     def _normalize_stawka(self, raw):
         return (raw or "").strip().upper()
 
     def _is_close(self, a, b, tolerance=Decimal("0.01")):
         return abs(a - b) <= tolerance
+
+    def _normalize_correction_sign(
+        self,
+        netto_dec: Decimal,
+        vat_dec: Decimal,
+        is_korekta: bool,
+    ):
+        if not is_korekta:
+            return netto_dec, vat_dec
+
+        return -abs(netto_dec), -abs(vat_dec)
+
+    def _is_valid_nip(self, nip: str) -> bool:
+        nip = "".join(ch for ch in str(nip or "") if ch.isdigit())
+
+        if len(nip) != 10:
+            return False
+
+        weights = [6, 5, 7, 2, 3, 4, 5, 6, 7]
+        checksum = sum(int(nip[i]) * weights[i] for i in range(9)) % 11
+
+        return checksum != 10 and checksum == int(nip[9])
+
+    def _is_valid_iso_date(self, value: str) -> bool:
+        if not value:
+            return False
+
+        try:
+            from datetime import date
+
+            date.fromisoformat(value[:10])
+            return True
+        except ValueError:
+            return False
+
+    def _build_input_validation(self, meta: dict, pozycje: list) -> dict:
+        warnings = []
+
+        typ = meta.get("typ")
+
+        if typ not in ("sprzedaz", "zakup"):
+            warnings.append("Nieznany typ faktury - podatnik nie jest ani sprzedawcą, ani nabywcą.")
+
+        if not meta.get("numer"):
+            warnings.append("Brak numeru faktury P_2.")
+
+        if not meta.get("data_wystawienia"):
+            warnings.append("Brak daty wystawienia P_1.")
+        elif not self._is_valid_iso_date(meta.get("data_wystawienia")):
+            warnings.append(f"Nieprawidłowa data wystawienia: {meta.get('data_wystawienia')!r}.")
+
+        if typ == "sprzedaz":
+            if not meta.get("data_sprzedazy"):
+                warnings.append("Brak daty sprzedaży P_6 dla faktury sprzedażowej.")
+
+            if not self._is_valid_nip(meta.get("nip_nabywcy")):
+                warnings.append(f"Nieprawidłowy NIP nabywcy: {meta.get('nip_nabywcy')!r}.")
+
+            if not meta.get("nazwa_nabywcy"):
+                warnings.append("Brak nazwy nabywcy.")
+
+        if typ == "zakup":
+            if not self._is_valid_nip(meta.get("nip_sprzedawcy")):
+                warnings.append(f"Nieprawidłowy NIP sprzedawcy: {meta.get('nip_sprzedawcy')!r}.")
+
+            if not meta.get("nazwa_sprzedawcy"):
+                warnings.append("Brak nazwy sprzedawcy.")
+
+        if not pozycje:
+            warnings.append("Brak pozycji faktury FaWiersz.")
+
+        return {
+            "ok": not warnings,
+            "warnings": warnings,
+            "warning_count": len(warnings),
+        }
 
     def _sum_header_by_prefix(self, root, prefixes) -> Decimal:
         total = Decimal("0.00")
@@ -4091,6 +5560,7 @@ class KSeFParser:
 
             if any(tag.startswith(prefix) for prefix in prefixes):
                 value = self._decimal_or_none(self._text(el))
+
                 if value is not None:
                     total += value
 
@@ -4105,6 +5575,8 @@ class KSeFParser:
         vat_nag = self._decimal_or_none(meta.get("suma_vat_naglowek")) or Decimal("0.00")
         brutto_nag = self._decimal_or_none(meta.get("suma_brutto_naglowek")) or Decimal("0.00")
 
+        is_korekta = bool(meta.get("is_korekta"))
+
         result = {
             "pozycje_netto": float(netto_poz),
             "pozycje_vat": float(vat_poz),
@@ -4112,12 +5584,32 @@ class KSeFParser:
             "naglowek_netto": float(netto_nag),
             "naglowek_vat": float(vat_nag),
             "naglowek_brutto": float(brutto_nag),
-            "netto_ok": self._is_close(netto_poz, netto_nag),
-            "vat_ok": self._is_close(vat_poz, vat_nag),
-            "brutto_ok": self._is_close(brutto_poz, brutto_nag),
+            "is_korekta": is_korekta,
         }
 
+        if is_korekta:
+            # Dla KOR parser księgowo przekształca wartości do JPK:
+            # - bierze tylko StanPrzed,
+            # - odwraca znak na minus.
+            # Nagłówek KSeF może pokazywać wartości po korekcie, np. P_15 = 0,
+            # więc zwykłe porównanie pozycji z nagłówkiem daje fałszywy warning.
+            result.update(
+                {
+                    "netto_ok": True,
+                    "vat_ok": True,
+                    "brutto_ok": True,
+                    "all_ok": True,
+                    "mode": "kor_skip_header_compare",
+                }
+            )
+            return result
+
+        result["netto_ok"] = self._is_close(netto_poz, netto_nag)
+        result["vat_ok"] = self._is_close(vat_poz, vat_nag)
+        result["brutto_ok"] = self._is_close(brutto_poz, brutto_nag)
         result["all_ok"] = result["netto_ok"] and result["vat_ok"] and result["brutto_ok"]
+        result["mode"] = "standard"
+
         return result
 
     def parse(self, xml_path):
@@ -4145,6 +5637,16 @@ class KSeFParser:
         rodzaj_faktury = self._find_text_first(
             root,
             [".//fa:Fa/fa:RodzajFaktury", ".//fa:RodzajFaktury"],
+            ns,
+        )
+
+        mpp_flag = self._find_text_first(
+            root,
+            [
+                ".//fa:Fa/fa:Adnotacje/fa:MPP",
+                ".//fa:Adnotacje/fa:MPP",
+                ".//fa:MPP",
+            ],
             ns,
         )
 
@@ -4204,7 +5706,7 @@ class KSeFParser:
             ns,
         )
         sprzedawca_nazwa = self._podmiot_nazwa(root, "Podmiot1", ns)
-
+        sprzedawca_kraj = self._podmiot_kraj(root, "Podmiot1", ns)
         nabywca_nip = self._find_text_first(
             root,
             [
@@ -4214,13 +5716,13 @@ class KSeFParser:
             ns,
         )
         nabywca_nazwa = self._podmiot_nazwa(root, "Podmiot2", ns)
-
+        nabywca_kraj = self._podmiot_kraj(root, "Podmiot2", ns)
         if sprzedawca_nip == self.MY_NIP:
             typ = "sprzedaz"
-            kontr = Kontrahent(nip=nabywca_nip, nazwa=nabywca_nazwa)
+            kontr = Kontrahent(nip=nabywca_nip, nazwa=nabywca_nazwa, kraj=nabywca_kraj)
         elif nabywca_nip == self.MY_NIP:
             typ = "zakup"
-            kontr = Kontrahent(nip=sprzedawca_nip, nazwa=sprzedawca_nazwa)
+            kontr = Kontrahent(nip=sprzedawca_nip, nazwa=sprzedawca_nazwa, kraj=sprzedawca_kraj)
         else:
             typ = "nieznany"
             kontr = Kontrahent(nip="", nazwa="")
@@ -4232,13 +5734,15 @@ class KSeFParser:
 
         meta["nip_sprzedawcy"] = sprzedawca_nip
         meta["nazwa_sprzedawcy"] = sprzedawca_nazwa
+        meta["kraj_sprzedawcy"] = sprzedawca_kraj
         meta["nip_nabywcy"] = nabywca_nip
         meta["nazwa_nabywcy"] = nabywca_nazwa
-
+        meta["kraj_nabywcy"] = nabywca_kraj
         meta["nr_ksef"] = nr_ksef or ""
         meta["numer"] = numer or ""
 
         meta["rodzaj_faktury"] = rodzaj_faktury
+        meta["mpp"] = str(mpp_flag).strip() == "1"
         meta["is_korekta"] = rodzaj_faktury.upper() == "KOR"
         meta["przyczyna_korekty"] = przyczyna_korekty
         meta["nr_fa_korygowanej"] = nr_fa_korygowanej
@@ -4256,12 +5760,17 @@ class KSeFParser:
             [".//fa:P_15"],
             ns,
         )
-
+        if meta["mpp"]:
+            meta["procedury"] = sorted(set(meta.get("procedury", []) + ["MPP"]))
         wiersze = root.findall(".//fa:FaWiersz", ns)
 
         for w in wiersze:
-            nazwa = self._find_text_first(w, ["fa:P_7"], ns)
+            stan_przed = self._find_text_first(w, ["fa:StanPrzed"], ns)
 
+            if meta["is_korekta"] and not stan_przed:
+                continue
+
+            nazwa = self._find_text_first(w, ["fa:P_7"], ns)
             netto_txt = self._find_text_first(
                 w,
                 ["fa:P_11", "fa:P_11A", "fa:P_9A", "fa:P_9B"],
@@ -4276,8 +5785,9 @@ class KSeFParser:
             stawka_norm = self._normalize_stawka(stawka_txt)
             stawka_dec = self._decimal_or_none(stawka_txt)
 
-            procedury = []
-            gtu = None
+            procedury = list(meta.get("procedury", []))
+
+            gtu = self.gtu_classifier.classify(nazwa)
 
             if stawka_dec is not None:
                 stawka = float(stawka_dec)
@@ -4293,8 +5803,26 @@ class KSeFParser:
                 stawka = None
                 vat_dec = vat_from_xml if vat_from_xml is not None else Decimal("0.00")
 
-                if stawka_norm in {"ZW", "NP", "OO"}:
+                if stawka_norm in {"ZW", "NP"}:
                     procedury.append(stawka_norm)
+
+                if stawka_norm == "OO":
+                    procedury.append("OO")
+                    vat_dec = Decimal("0.00")
+
+            kraj_kontrahenta = meta.get("kraj_nabywcy") if typ == "sprzedaz" else meta.get("kraj_sprzedawcy")
+
+            if typ == "sprzedaz" and stawka == 0 and kraj_kontrahenta and kraj_kontrahenta != "PL":
+                if kraj_kontrahenta in self.EU_COUNTRIES:
+                    procedury.append("WDT")
+                else:
+                    procedury.append("EXP")
+
+            netto_dec, vat_dec = self._normalize_correction_sign(
+                netto_dec,
+                vat_dec,
+                meta["is_korekta"],
+            )
 
             pozycje.append(
                 Pozycja(
@@ -4316,6 +5844,16 @@ class KSeFParser:
 
         totals_check = self._build_totals_check(pozycje, meta)
         meta["kontrola_sum"] = totals_check
+
+        input_validation = self._build_input_validation(meta, pozycje)
+        meta["walidacja_wejscia"] = input_validation
+
+        if not input_validation["ok"]:
+            print(
+                "[OSTRZEŻENIE] Walidacja danych wejściowych | "
+                f"numer={meta.get('numer')!r} | "
+                f"ostrzeżenia={input_validation['warnings']!r}"
+            )
 
         if not totals_check["all_ok"]:
             print(
@@ -4379,6 +5917,14 @@ def get_invoices_dir(batch_path: str | Path) -> Path:
 ===== FILE END: ksef2jpk/utils/batch_loader.py =====
 
 
+===== FILE START: ksef2jpk/utils/dedup.py =====
+
+def get_document_dedup_key(faktura):
+    return faktura.nr_ksef or faktura.meta.get("nr_ksef") or faktura.meta.get("numer")
+
+===== FILE END: ksef2jpk/utils/dedup.py =====
+
+
 ===== FILE START: ksef2jpk/utils/jpk2html.py =====
 
 import os
@@ -4429,9 +5975,7 @@ class JPK2HTML:
 
         if elem.attrib:
             for k, v in elem.attrib.items():
-                html_parts.append(
-                    f' <span style="font-weight:bold;">{escape(k)}="{escape(v)}"</span>'
-                )
+                html_parts.append(f' <span style="font-weight:bold;">{escape(k)}="{escape(v)}"</span>')
 
         html_parts.append(f'<span style="color:{TAG_COLOR};">&gt;</span>')
 
@@ -4449,15 +5993,11 @@ class JPK2HTML:
             for child in children:
                 html_parts.append(self.xml_to_html_tree(child, indent + 1))
 
-            html_parts.append(
-                f'{pad}<span style="color:{TAG_COLOR};">&lt;/{escape(name)}&gt;</span><br>'
-            )
+            html_parts.append(f'{pad}<span style="color:{TAG_COLOR};">&lt;/{escape(name)}&gt;</span><br>')
 
         else:
 
-            html_parts.append(
-                f'<span style="color:{TAG_COLOR};">&lt;/{escape(name)}&gt;</span><br>'
-            )
+            html_parts.append(f'<span style="color:{TAG_COLOR};">&lt;/{escape(name)}&gt;</span><br>')
 
         return "".join(html_parts)
 
@@ -4724,106 +6264,6 @@ if __name__ == "__main__":
 ===== FILE END: ksef2jpk/validator/validate_jpk.py =====
 
 
-===== FILE START: pyproject.toml =====
-
-[build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
-
-[project]
-name = "ksef-jpk"
-version = "0.1.0"
-description = "KSeF → JPK automation toolkit"
-readme = "README.md"
-requires-python = ">=3.11"
-authors = [
-    { name = "Dariusz Polzer" }
-]
-
-# Twoje zależności runtime (jeśli jakieś masz)
-dependencies = []
-
-[project.optional-dependencies]
-dev = [
-    "pytest",
-    "pytest-cov",
-    "ruff",
-    "black",
-    "bandit",
-]
-
-[tool.setuptools]
-package-dir = {"" = "."}
-
-[tool.setuptools.packages.find]
-where = ["."]
-
-# -----------------------------------------
-# PYTEST
-# -----------------------------------------
-[tool.pytest.ini_options]
-pythonpath = ["src"]
-norecursedirs = ["venv"]
-testpaths = ["tests"]
-
-# -----------------------------------------
-# RUFF
-# -----------------------------------------
-[tool.ruff]
-line-length = 120
-target-version = "py311"
-src = ["src"]
-
-[tool.ruff.lint]
-select = ["E", "F", "W", "I"]
-ignore = []
-
-# -----------------------------------------
-# BLACK
-# -----------------------------------------
-[tool.black]
-line-length = 120
-target-version = ["py311"]
-
-# -----------------------------------------
-# BANDIT
-# -----------------------------------------
-[tool.bandit]
-exclude_dirs = ["venv"]
-skips = ["B101", "B404", "B603", "B607", "B110", "B112"]
-
-===== FILE END: pyproject.toml =====
-
-
-===== FILE START: pytest.ini =====
-
-[pytest]
-norecursedirs = venv
-pythonpath = src
-
-===== FILE END: pytest.ini =====
-
-
-===== FILE START: requirements.txt =====
-
-colorama==0.4.6
-defusedxml==0.7.1
-iniconfig==2.3.0
-lxml==5.3.0
-packaging==26.2
-pathspec==0.12.1
-pluggy==1.6.0
-Pygments==2.20.0
-pytest==9.0.3
-defusedxml>=0.7
-pytest>=9.0
-ruff
-black
-bandit
-
-===== FILE END: requirements.txt =====
-
-
 ===== FILE START: tests/test_batch_loader.py =====
 
 import json
@@ -4849,6 +6289,53 @@ def test_get_invoices_dir(tmp_path):
     assert get_invoices_dir(batch_dir) == batch_dir / "invoices"
 
 ===== FILE END: tests/test_batch_loader.py =====
+
+
+===== FILE START: tests/test_deduplication.py =====
+
+from ksef2jpk.model.faktura_model import FakturaModel
+from ksef2jpk.utils.dedup import get_document_dedup_key
+
+
+def test_get_document_dedup_key_prefers_nr_ksef():
+    faktura = FakturaModel(
+        nr_ksef="KSEF-123",
+        meta={
+            "nr_ksef": "META-KSEF",
+            "numer": "FV/1/2026",
+        },
+        pozycje=[],
+    )
+
+    assert get_document_dedup_key(faktura) == "KSEF-123"
+
+
+def test_get_document_dedup_key_falls_back_to_meta_nr_ksef():
+    faktura = FakturaModel(
+        nr_ksef="",
+        meta={
+            "nr_ksef": "META-KSEF",
+            "numer": "FV/1/2026",
+        },
+        pozycje=[],
+    )
+
+    assert get_document_dedup_key(faktura) == "META-KSEF"
+
+
+def test_get_document_dedup_key_falls_back_to_invoice_number():
+    faktura = FakturaModel(
+        nr_ksef="",
+        meta={
+            "nr_ksef": "",
+            "numer": "FV/1/2026",
+        },
+        pozycje=[],
+    )
+
+    assert get_document_dedup_key(faktura) == "FV/1/2026"
+
+===== FILE END: tests/test_deduplication.py =====
 
 
 ===== FILE START: tests/test_full_pipeline.py =====
@@ -4936,7 +6423,236 @@ def test_full_pipeline(tmp_path):
 
     assert out.exists()
 
+
+def test_full_pipeline_korekta_to_zero(tmp_path):
+    xml = """<?xml version="1.0" encoding="UTF-8"?>
+    <Faktura xmlns="http://crd.gov.pl/wzor/2025/06/25/13775/">
+      <Podmiot1>
+        <DaneIdentyfikacyjne>
+          <NIP>6791444505</NIP>
+          <Nazwa>Test Seller</Nazwa>
+        </DaneIdentyfikacyjne>
+      </Podmiot1>
+
+      <Podmiot2>
+        <DaneIdentyfikacyjne>
+          <NIP>1234567890</NIP>
+          <Nazwa>Test Buyer</Nazwa>
+        </DaneIdentyfikacyjne>
+      </Podmiot2>
+
+      <Fa>
+        <P_1>2026-03-24</P_1>
+        <P_2>PE003K/2026</P_2>
+        <P_6>2026-03-24</P_6>
+        <P_15>0</P_15>
+        <RodzajFaktury>KOR</RodzajFaktury>
+
+        <FaWiersz>
+          <P_7>Projekt1</P_7>
+          <P_11>11000</P_11>
+          <P_12>23</P_12>
+          <StanPrzed>1</StanPrzed>
+        </FaWiersz>
+
+        <FaWiersz>
+          <P_7>Projekt1</P_7>
+          <P_11>11000</P_11>
+          <P_12>23</P_12>
+        </FaWiersz>
+
+        <FaWiersz>
+          <P_7>Projekt2</P_7>
+          <P_11>4500</P_11>
+          <P_12>23</P_12>
+          <StanPrzed>1</StanPrzed>
+        </FaWiersz>
+
+        <FaWiersz>
+          <P_7>Projekt2</P_7>
+          <P_11>4500</P_11>
+          <P_12>23</P_12>
+        </FaWiersz>
+      </Fa>
+    </Faktura>
+    """
+
+    xml_file = tmp_path / "korekta.xml"
+    xml_file.write_text(xml, encoding="utf-8")
+
+    parser = KSeFParser("6791444505")
+    faktura = parser.parse(str(xml_file))
+
+    mapper = JPKMapperPRO()
+    rows = mapper.map(faktura)
+
+    assert len(rows) == 1
+    assert rows[0].typ == "sprzedaz"
+    assert rows[0].netto == -15500.0
+    assert rows[0].vat == -3565.0
+    assert rows[0].stawka == 23.0
+    assert rows[0].is_korekta is True
+
+    builder = JPKBuilderPROPlus(
+        rok=2026,
+        miesiac=3,
+        podmiot={
+            "nip": "6791444505",
+            "nazwa": "Dariusz Polzer",
+            "kod_urzedu": "1214",
+        },
+    )
+
+    jpk = builder.build(rows, [])
+
+    deklaracja = jpk["Deklaracja"]["PozycjeSzczegolowe"]
+    ewidencja = jpk["Ewidencja"]
+
+    assert deklaracja["P_19"] == -15500
+    assert deklaracja["P_20"] == -3565
+    assert deklaracja["P_37"] == -15500
+    assert deklaracja["P_38"] == -3565
+
+    sprzedaz_wiersz = ewidencja["SprzedazWiersz"][0]
+
+    assert sprzedaz_wiersz["K_19"] == -15500.0
+    assert sprzedaz_wiersz["K_20"] == -3565.0
+    assert ewidencja["SprzedazCtrl"]["LiczbaWierszySprzedazy"] == 1
+    assert ewidencja["SprzedazCtrl"]["PodatekNalezny"] == -3565.0
+
+
+def test_mpp_is_detected_but_not_emitted_in_jpk_xml(tmp_path):
+    xml = """<?xml version="1.0" encoding="UTF-8"?>
+    <Faktura xmlns="http://crd.gov.pl/wzor/2025/06/25/13775/">
+      <Podmiot1>
+        <DaneIdentyfikacyjne>
+          <NIP>6791444505</NIP>
+          <Nazwa>Test Seller</Nazwa>
+        </DaneIdentyfikacyjne>
+      </Podmiot1>
+
+      <Podmiot2>
+        <DaneIdentyfikacyjne>
+          <NIP>1234567890</NIP>
+          <Nazwa>Test Buyer</Nazwa>
+        </DaneIdentyfikacyjne>
+      </Podmiot2>
+
+      <Fa>
+        <P_1>2026-03-24</P_1>
+        <P_2>FV/MPP/1</P_2>
+        <P_6>2026-03-24</P_6>
+
+        <Adnotacje>
+          <MPP>1</MPP>
+        </Adnotacje>
+
+        <FaWiersz>
+          <P_7>Usługa MPP</P_7>
+          <P_11>20000</P_11>
+          <P_12>23</P_12>
+        </FaWiersz>
+      </Fa>
+    </Faktura>
+    """
+
+    xml_file = tmp_path / "mpp.xml"
+    xml_file.write_text(xml, encoding="utf-8")
+
+    parser = KSeFParser("6791444505")
+    faktura = parser.parse(str(xml_file))
+
+    assert faktura.meta["mpp"] is True
+    assert "MPP" in faktura.meta["procedury"]
+
+    mapper = JPKMapperPRO()
+    rows = mapper.map(faktura)
+
+    assert len(rows) == 1
+    assert "MPP" in rows[0].procedury
+
+    builder = JPKBuilderPROPlus(
+        rok=2026,
+        miesiac=3,
+        podmiot={
+            "nip": "6791444505",
+            "nazwa": "Dariusz Polzer",
+            "kod_urzedu": "1214",
+        },
+    )
+
+    jpk_dict = builder.build(rows, [])
+
+    from ksef2jpk.adapter.jpk_adapter import dict_to_jpk_model
+
+    jpk_model = dict_to_jpk_model(jpk_dict)
+
+    output_xml = tmp_path / "jpk_mpp.xml"
+    generator = JPKGeneratorPRO()
+    generator.generate(jpk_model, str(output_xml))
+
+    xml_out = output_xml.read_text(encoding="utf-8")
+
+    assert "<MPP>" not in xml_out
+    assert "</MPP>" not in xml_out
+
 ===== FILE END: tests/test_full_pipeline.py =====
+
+
+===== FILE START: tests/test_gtu_classifier.py =====
+
+from ksef2jpk.classifier.gtu_classifier import GTUClassifier
+
+
+def test_gtu_classifier_uses_default_rules_when_config_missing():
+    classifier = GTUClassifier(config_path="missing_gtu_rules.yaml")
+
+    assert classifier.classify("Sprzedaż laptopa") == "GTU_06"
+    assert classifier.classify("Usługa doradztwa podatkowego") == "GTU_12"
+    assert classifier.classify("Sprzedaż książek papierowych") is None
+
+
+def test_gtu_classifier_loads_rules_from_yaml(tmp_path):
+    config_file = tmp_path / "gtu_rules.yaml"
+    config_file.write_text(
+        """
+GTU_99:
+  - specjalny produkt
+  - testowy towar
+
+GTU_12:
+  - audyt
+  - consulting
+
+PROCEDURY:
+  MPP:
+    - mechanizm podzielonej płatności
+""",
+        encoding="utf-8",
+    )
+
+    classifier = GTUClassifier(config_path=str(config_file))
+
+    assert classifier.classify("Sprzedaż specjalny produkt") == "GTU_99"
+    assert classifier.classify("Usługa audyt") == "GTU_12"
+    assert classifier.classify("laptop") is None
+
+
+def test_gtu_classifier_is_case_insensitive(tmp_path):
+    config_file = tmp_path / "gtu_rules.yaml"
+    config_file.write_text(
+        """
+GTU_06:
+  - laptop
+""",
+        encoding="utf-8",
+    )
+
+    classifier = GTUClassifier(config_path=str(config_file))
+
+    assert classifier.classify("SPRZEDAŻ LAPTOP GAMINGOWY") == "GTU_06"
+
+===== FILE END: tests/test_gtu_classifier.py =====
 
 
 ===== FILE START: tests/test_jpk_builder.py =====
@@ -4996,6 +6712,87 @@ def test_jpk_builder_declaration_values():
     assert deklaracja["P_37"] == 300
     assert deklaracja["P_38"] == 33
 
+
+def test_builder_marks_oo_sales_procedure():
+    sprzedaz = [
+        WierszEwidencji(
+            typ="sprzedaz",
+            kontrahent_nip="1234567890",
+            kontrahent_nazwa="Test Buyer",
+            nr_ksef="TEST-KSEF-OO",
+            dokument="FV/OO/1",
+            data_wystawienia="2026-04-01",
+            data_sprzedazy="2026-04-01",
+            netto=5000,
+            vat=0,
+            stawka=None,
+            procedury=["OO"],
+        )
+    ]
+
+    builder = JPKBuilderPROPlus(
+        rok=2026,
+        miesiac=4,
+        podmiot={
+            "nip": "6791444505",
+            "nazwa": "Dariusz Polzer",
+            "kod_urzedu": "1214",
+        },
+    )
+
+    jpk = builder.build(sprzedaz, [])
+
+    row = jpk["Ewidencja"]["SprzedazWiersz"][0]
+    deklaracja = jpk["Deklaracja"]["PozycjeSzczegolowe"]
+
+    assert row["OO"] == "1"
+    assert deklaracja["P_31"] == 5000
+
+
+def test_builder_maps_imp_purchase_to_k45_k46():
+    zakupy = [
+        WierszEwidencji(
+            typ="zakup",
+            kontrahent_nip="DE123456789",
+            kontrahent_nazwa="EU Supplier",
+            nr_ksef="",
+            dokument="IMP/1/2026",
+            data_wystawienia="2026-04-10",
+            data_sprzedazy="2026-04-10",
+            data_wplywu="2026-04-11",
+            netto=10000,
+            vat=2300,
+            stawka=23,
+            procedury=["IMP"],
+        )
+    ]
+
+    builder = JPKBuilderPROPlus(
+        rok=2026,
+        miesiac=4,
+        podmiot={
+            "nip": "6791444505",
+            "nazwa": "Dariusz Polzer",
+            "kod_urzedu": "1214",
+        },
+    )
+
+    jpk = builder.build([], zakupy)
+
+    row = jpk["Ewidencja"]["ZakupWiersz"][0]
+    deklaracja = jpk["Deklaracja"]["PozycjeSzczegolowe"]
+
+    assert row["IMP"] == "1"
+
+    assert row["K_42"] == 0
+    assert row["K_43"] == 0
+
+    assert row["K_45"] == 10000
+    assert row["K_46"] == 2300
+
+    assert deklaracja["P_45"] == 10000
+    assert deklaracja["P_46"] == 0
+
 ===== FILE END: tests/test_jpk_builder.py =====
 
 
@@ -5043,6 +6840,72 @@ def test_mapper_groups_by_vat_rate_for_sales():
     assert row_5.stawka == 5.0
     assert row_5.netto == 50.00
     assert row_5.vat == 2.50
+
+
+def test_mapper_uses_manual_gtu_override():
+    kontrahent = Kontrahent(nip="1234567890", nazwa="Test Buyer")
+
+    faktura = FakturaModel(
+        nr_ksef="6791444505-20260401-755BEE800001-B8",
+        meta={
+            "typ": "sprzedaz",
+            "numer": "FV/GTU/OVERRIDE",
+            "nip_nabywcy": "1234567890",
+            "nazwa_nabywcy": "Test Buyer",
+            "data_wystawienia": "2026-04-01",
+            "data_sprzedazy": "2026-04-01",
+        },
+        pozycje=[
+            Pozycja(
+                nazwa="Laptop",
+                netto=1000,
+                vat=230,
+                typ="sprzedaz",
+                kontrahent=kontrahent,
+                stawka=23,
+                gtu="GTU_06",
+                gtu_manual="GTU_12",
+            )
+        ],
+    )
+
+    rows = JPKMapperPRO().map(faktura)
+
+    assert len(rows) == 1
+    assert rows[0].gtu == "GTU_12"
+
+
+def test_mapper_uses_manual_procedure_override():
+    kontrahent = Kontrahent(nip="1234567890", nazwa="Test Buyer")
+
+    faktura = FakturaModel(
+        nr_ksef="6791444505-20260401-755BEE800001-B8",
+        meta={
+            "typ": "sprzedaz",
+            "numer": "FV/PROC/OVERRIDE",
+            "nip_nabywcy": "1234567890",
+            "nazwa_nabywcy": "Test Buyer",
+            "data_wystawienia": "2026-04-01",
+            "data_sprzedazy": "2026-04-01",
+        },
+        pozycje=[
+            Pozycja(
+                nazwa="Usługa",
+                netto=1000,
+                vat=230,
+                typ="sprzedaz",
+                kontrahent=kontrahent,
+                stawka=23,
+                procedury=["MPP"],
+                procedury_manual=["TP"],
+            )
+        ],
+    )
+
+    rows = JPKMapperPRO().map(faktura)
+
+    assert len(rows) == 1
+    assert rows[0].procedury == ["TP"]
 
 ===== FILE END: tests/test_jpk_mapper.py =====
 
@@ -5130,6 +6993,362 @@ def test_ksef_parser_basic(tmp_path):
     assert faktura.pozycje[0].netto == 100
     assert faktura.pozycje[1].netto == 200
 
+
+def test_korekta_stan_przed_only(tmp_path):
+    xml = """<?xml version="1.0" encoding="UTF-8"?>
+    <Faktura xmlns="http://crd.gov.pl/wzor/2025/06/25/13775/">
+      <Podmiot1>
+        <DaneIdentyfikacyjne>
+          <NIP>6791444505</NIP>
+          <Nazwa>Test Seller</Nazwa>
+        </DaneIdentyfikacyjne>
+      </Podmiot1>
+
+      <Podmiot2>
+        <DaneIdentyfikacyjne>
+          <NIP>1234567890</NIP>
+          <Nazwa>Test Buyer</Nazwa>
+        </DaneIdentyfikacyjne>
+      </Podmiot2>
+
+      <Fa>
+        <RodzajFaktury>KOR</RodzajFaktury>
+
+        <FaWiersz>
+          <P_7>Projekt1</P_7>
+          <P_11>1000</P_11>
+          <P_12>23</P_12>
+          <StanPrzed>1</StanPrzed>
+        </FaWiersz>
+
+        <FaWiersz>
+          <P_7>Projekt1</P_7>
+          <P_11>1000</P_11>
+          <P_12>23</P_12>
+        </FaWiersz>
+      </Fa>
+    </Faktura>
+    """
+
+    xml_file = tmp_path / "korekta.xml"
+    xml_file.write_text(xml, encoding="utf-8")
+
+    parser = KSeFParser("6791444505")
+    faktura = parser.parse(str(xml_file))
+
+    assert faktura.meta["is_korekta"] is True
+
+    # tylko StanPrzed
+    assert len(faktura.pozycje) == 1
+
+    p = faktura.pozycje[0]
+
+    assert p.netto == -1000.0
+    assert p.vat == -230.0
+    assert p.stawka == 23
+
+
+def test_korekta_totals_check_does_not_warn_for_zero_correction(tmp_path):
+    xml = """<?xml version="1.0" encoding="UTF-8"?>
+    <Faktura xmlns="http://crd.gov.pl/wzor/2025/06/25/13775/">
+      <Podmiot1>
+        <DaneIdentyfikacyjne>
+          <NIP>6791444505</NIP>
+          <Nazwa>Test Seller</Nazwa>
+        </DaneIdentyfikacyjne>
+      </Podmiot1>
+
+      <Podmiot2>
+        <DaneIdentyfikacyjne>
+          <NIP>1234567890</NIP>
+          <Nazwa>Test Buyer</Nazwa>
+        </DaneIdentyfikacyjne>
+      </Podmiot2>
+
+      <Fa>
+        <P_1>2026-03-24</P_1>
+        <P_2>PE003K/2026</P_2>
+        <P_6>2026-03-24</P_6>
+        <P_15>0</P_15>
+        <RodzajFaktury>KOR</RodzajFaktury>
+
+        <FaWiersz>
+          <P_7>Projekt1</P_7>
+          <P_11>1000</P_11>
+          <P_12>23</P_12>
+          <StanPrzed>1</StanPrzed>
+        </FaWiersz>
+
+        <FaWiersz>
+          <P_7>Projekt1</P_7>
+          <P_11>1000</P_11>
+          <P_12>23</P_12>
+        </FaWiersz>
+      </Fa>
+    </Faktura>
+    """
+
+    xml_file = tmp_path / "korekta.xml"
+    xml_file.write_text(xml, encoding="utf-8")
+
+    parser = KSeFParser("6791444505")
+    faktura = parser.parse(str(xml_file))
+
+    kontrola_sum = faktura.meta["kontrola_sum"]
+
+    assert kontrola_sum["is_korekta"] is True
+    assert kontrola_sum["all_ok"] is True
+    assert kontrola_sum["mode"] == "kor_skip_header_compare"
+
+
+def test_parser_detects_mpp(tmp_path):
+    xml = """<?xml version="1.0" encoding="UTF-8"?>
+    <Faktura xmlns="http://crd.gov.pl/wzor/2025/06/25/13775/">
+
+      <Podmiot1>
+        <DaneIdentyfikacyjne>
+          <NIP>6791444505</NIP>
+          <Nazwa>Seller</Nazwa>
+        </DaneIdentyfikacyjne>
+      </Podmiot1>
+
+      <Podmiot2>
+        <DaneIdentyfikacyjne>
+          <NIP>1234567890</NIP>
+          <Nazwa>Buyer</Nazwa>
+        </DaneIdentyfikacyjne>
+      </Podmiot2>
+
+      <Fa>
+        <P_1>2026-03-24</P_1>
+        <P_2>FV/MPP/1</P_2>
+        <P_6>2026-03-24</P_6>
+
+        <Adnotacje>
+          <MPP>1</MPP>
+        </Adnotacje>
+
+        <FaWiersz>
+          <P_7>Usługa</P_7>
+          <P_11>20000</P_11>
+          <P_12>23</P_12>
+        </FaWiersz>
+
+      </Fa>
+    </Faktura>
+    """
+
+    xml_file = tmp_path / "mpp.xml"
+    xml_file.write_text(xml, encoding="utf-8")
+
+    parser = KSeFParser("6791444505")
+    faktura = parser.parse(str(xml_file))
+
+    assert faktura.meta["mpp"] is True
+    assert "MPP" in faktura.meta["procedury"]
+
+    assert len(faktura.pozycje) == 1
+
+    p = faktura.pozycje[0]
+
+    assert "MPP" in (p.procedury or [])
+
+
+def test_parser_handles_oo_procedure(tmp_path):
+    xml = """<?xml version="1.0" encoding="UTF-8"?>
+    <Faktura xmlns="http://crd.gov.pl/wzor/2025/06/25/13775/">
+
+      <Podmiot1>
+        <DaneIdentyfikacyjne>
+          <NIP>6791444505</NIP>
+          <Nazwa>Seller</Nazwa>
+        </DaneIdentyfikacyjne>
+      </Podmiot1>
+
+      <Podmiot2>
+        <DaneIdentyfikacyjne>
+          <NIP>1234567890</NIP>
+          <Nazwa>Buyer</Nazwa>
+        </DaneIdentyfikacyjne>
+      </Podmiot2>
+
+      <Fa>
+        <P_1>2026-03-24</P_1>
+        <P_2>FV/OO/1</P_2>
+        <P_6>2026-03-24</P_6>
+
+        <FaWiersz>
+          <P_7>Usługa OO</P_7>
+          <P_11>5000</P_11>
+          <P_12>OO</P_12>
+        </FaWiersz>
+
+      </Fa>
+    </Faktura>
+    """
+
+    xml_file = tmp_path / "oo.xml"
+    xml_file.write_text(xml, encoding="utf-8")
+
+    parser = KSeFParser("6791444505")
+    faktura = parser.parse(str(xml_file))
+
+    assert len(faktura.pozycje) == 1
+
+    p = faktura.pozycje[0]
+
+    assert p.netto == 5000.0
+    assert p.vat == 0.0
+    assert p.stawka is None
+    assert "OO" in (p.procedury or [])
+
+
+def test_parser_detects_wdt(tmp_path):
+    xml = """<?xml version="1.0" encoding="UTF-8"?>
+    <Faktura xmlns="http://crd.gov.pl/wzor/2025/06/25/13775/">
+      <Podmiot1>
+        <DaneIdentyfikacyjne>
+          <NIP>6791444505</NIP>
+          <Nazwa>Test Seller</Nazwa>
+        </DaneIdentyfikacyjne>
+        <Adres>
+          <KodKraju>PL</KodKraju>
+        </Adres>
+      </Podmiot1>
+
+      <Podmiot2>
+        <DaneIdentyfikacyjne>
+          <NIP>DE123456789</NIP>
+          <Nazwa>EU Buyer</Nazwa>
+        </DaneIdentyfikacyjne>
+        <Adres>
+          <KodKraju>DE</KodKraju>
+        </Adres>
+      </Podmiot2>
+
+      <Fa>
+        <P_1>2026-04-01</P_1>
+        <P_2>WDT/1/2026</P_2>
+        <P_6>2026-04-01</P_6>
+
+        <FaWiersz>
+          <P_7>Export service</P_7>
+          <P_11>10000</P_11>
+          <P_12>0</P_12>
+        </FaWiersz>
+      </Fa>
+    </Faktura>
+    """
+
+    xml_file = tmp_path / "wdt.xml"
+    xml_file.write_text(xml, encoding="utf-8")
+
+    parser = KSeFParser("6791444505")
+    faktura = parser.parse(str(xml_file))
+
+    assert len(faktura.pozycje) == 1
+
+    p = faktura.pozycje[0]
+
+    assert p.stawka == 0.0
+    assert "WDT" in (p.procedury or [])
+
+
+def test_parser_detects_export_exp(tmp_path):
+    xml = """<?xml version="1.0" encoding="UTF-8"?>
+    <Faktura xmlns="http://crd.gov.pl/wzor/2025/06/25/13775/">
+      <Podmiot1>
+        <DaneIdentyfikacyjne>
+          <NIP>6791444505</NIP>
+          <Nazwa>Test Seller</Nazwa>
+        </DaneIdentyfikacyjne>
+        <Adres>
+          <KodKraju>PL</KodKraju>
+        </Adres>
+      </Podmiot1>
+
+      <Podmiot2>
+        <DaneIdentyfikacyjne>
+          <NIP>GB123456789</NIP>
+          <Nazwa>UK Buyer</Nazwa>
+        </DaneIdentyfikacyjne>
+        <Adres>
+          <KodKraju>GB</KodKraju>
+        </Adres>
+      </Podmiot2>
+
+      <Fa>
+        <P_1>2026-04-01</P_1>
+        <P_2>EXP/1/2026</P_2>
+        <P_6>2026-04-01</P_6>
+
+        <FaWiersz>
+          <P_7>Export goods</P_7>
+          <P_11>10000</P_11>
+          <P_12>0</P_12>
+        </FaWiersz>
+      </Fa>
+    </Faktura>
+    """
+
+    xml_file = tmp_path / "exp.xml"
+    xml_file.write_text(xml, encoding="utf-8")
+
+    parser = KSeFParser("6791444505")
+    faktura = parser.parse(str(xml_file))
+
+    assert len(faktura.pozycje) == 1
+
+    p = faktura.pozycje[0]
+
+    assert p.stawka == 0.0
+    assert "EXP" in (p.procedury or [])
+    assert "WDT" not in (p.procedury or [])
+
+
+def test_parser_detects_gtu_06(tmp_path):
+    xml = """<?xml version="1.0" encoding="UTF-8"?>
+    <Faktura xmlns="http://crd.gov.pl/wzor/2025/06/25/13775/">
+      <Podmiot1>
+        <DaneIdentyfikacyjne>
+          <NIP>6791444505</NIP>
+          <Nazwa>Seller</Nazwa>
+        </DaneIdentyfikacyjne>
+      </Podmiot1>
+
+      <Podmiot2>
+        <DaneIdentyfikacyjne>
+          <NIP>5250001001</NIP>
+          <Nazwa>Buyer</Nazwa>
+        </DaneIdentyfikacyjne>
+      </Podmiot2>
+
+      <Fa>
+        <P_1>2026-04-01</P_1>
+        <P_2>FV/GTU/1</P_2>
+        <P_6>2026-04-01</P_6>
+
+        <FaWiersz>
+          <P_7>Sprzedaż laptop gamingowy</P_7>
+          <P_11>10000</P_11>
+          <P_12>23</P_12>
+        </FaWiersz>
+      </Fa>
+    </Faktura>
+    """
+
+    xml_file = tmp_path / "gtu.xml"
+    xml_file.write_text(xml, encoding="utf-8")
+
+    parser = KSeFParser("6791444505")
+    faktura = parser.parse(str(xml_file))
+
+    assert len(faktura.pozycje) == 1
+
+    p = faktura.pozycje[0]
+
+    assert p.gtu == "GTU_06"
+
 ===== FILE END: tests/test_ksef_parser.py =====
 
 
@@ -5146,6 +7365,261 @@ def test_safe_filename_empty():
     assert safe_filename("") == "unknown"
 
 ===== FILE END: tests/test_string_tools.py =====
+
+
+===== FILE START: tests/test_xsd_validation.py =====
+
+from pathlib import Path
+
+from ksef2jpk.adapter.jpk_adapter import dict_to_jpk_model
+from ksef2jpk.builder.jpk_builder import JPKBuilderPROPlus
+from ksef2jpk.generator.jpk_generator import JPKGeneratorPRO
+from ksef2jpk.model.jpk_model import WierszEwidencji
+from ksef2jpk.validator.validate_jpk import validate_jpk
+
+
+def test_generated_jpk_passes_xsd_validation(tmp_path):
+    xsd_path = Path("validator/JPK_V7M_3.xsd")
+
+    if not xsd_path.exists():
+        xsd_path = Path("ksef2jpk/validator/JPK_V7M_3.xsd")
+
+    assert xsd_path.exists(), f"Brak XSD: {xsd_path}"
+
+    sprzedaz = [
+        WierszEwidencji(
+            typ="sprzedaz",
+            kontrahent_nip="1234567890",
+            kontrahent_nazwa="Test Buyer",
+            nr_ksef="",
+            dokument="FV/1/2026",
+            data_wystawienia="2026-04-01",
+            data_sprzedazy="2026-04-01",
+            netto=1000,
+            vat=230,
+            stawka=23,
+            procedury=[],
+        )
+    ]
+
+    builder = JPKBuilderPROPlus(
+        rok=2026,
+        miesiac=4,
+        podmiot={
+            "nip": "6791444505",
+            "nazwa": "Dariusz Polzer",
+            "kod_urzedu": "1214",
+            "email": "test@example.com",
+            "telefon": "123456789",
+            "data_urodzenia": "1980-01-01",
+        },
+    )
+
+    jpk_dict = builder.build(sprzedaz, [])
+    jpk_model = dict_to_jpk_model(jpk_dict)
+
+    output_xml = tmp_path / "jpk.xml"
+
+    generator = JPKGeneratorPRO()
+    generator.generate(jpk_model, str(output_xml))
+
+    assert output_xml.exists()
+
+    assert validate_jpk(str(output_xml), str(xsd_path)) is True
+
+
+def test_generated_jpk_with_kor_oo_imp_passes_xsd_validation(tmp_path):
+    xsd_path = Path("validator/JPK_V7M_3.xsd")
+
+    if not xsd_path.exists():
+        xsd_path = Path("ksef2jpk/validator/JPK_V7M_3.xsd")
+
+    assert xsd_path.exists(), f"Brak XSD: {xsd_path}"
+
+    sprzedaz = [
+        WierszEwidencji(
+            typ="sprzedaz",
+            kontrahent_nip="1234567890",
+            kontrahent_nazwa="Test Buyer",
+            nr_ksef="",
+            dokument="KOR/1/2026",
+            data_wystawienia="2026-04-05",
+            data_sprzedazy="2026-04-05",
+            netto=-1000,
+            vat=-230,
+            stawka=23,
+            procedury=[],
+            is_korekta=True,
+        ),
+        WierszEwidencji(
+            typ="sprzedaz",
+            kontrahent_nip="1234567890",
+            kontrahent_nazwa="Test Buyer",
+            nr_ksef="",
+            dokument="OO/1/2026",
+            data_wystawienia="2026-04-06",
+            data_sprzedazy="2026-04-06",
+            netto=5000,
+            vat=0,
+            stawka=None,
+            procedury=["OO"],
+        ),
+    ]
+
+    zakupy = [
+        WierszEwidencji(
+            typ="zakup",
+            kontrahent_nip="DE123456789",
+            kontrahent_nazwa="EU Supplier",
+            nr_ksef="",
+            dokument="IMP/1/2026",
+            data_wystawienia="2026-04-10",
+            data_sprzedazy="2026-04-10",
+            data_wplywu="2026-04-11",
+            netto=10000,
+            vat=2300,
+            stawka=23,
+            procedury=["IMP"],
+        )
+    ]
+
+    builder = JPKBuilderPROPlus(
+        rok=2026,
+        miesiac=4,
+        podmiot={
+            "nip": "6791444505",
+            "nazwa": "Dariusz Polzer",
+            "kod_urzedu": "1214",
+            "email": "test@example.com",
+            "telefon": "123456789",
+            "data_urodzenia": "1980-01-01",
+        },
+    )
+
+    jpk_dict = builder.build(sprzedaz, zakupy)
+    jpk_model = dict_to_jpk_model(jpk_dict)
+
+    output_xml = tmp_path / "jpk_kor_oo_imp.xml"
+
+    generator = JPKGeneratorPRO()
+    generator.generate(jpk_model, str(output_xml))
+
+    assert output_xml.exists()
+    assert validate_jpk(str(output_xml), str(xsd_path)) is True
+
+
+def test_generated_jpk_with_wdt_passes_xsd_validation(tmp_path):
+    xsd_path = Path("validator/JPK_V7M_3.xsd")
+
+    if not xsd_path.exists():
+        xsd_path = Path("ksef2jpk/validator/JPK_V7M_3.xsd")
+
+    assert xsd_path.exists()
+
+    sprzedaz = [
+        WierszEwidencji(
+            typ="sprzedaz",
+            kontrahent_nip="DE123456789",
+            kontrahent_nazwa="EU Buyer",
+            nr_ksef="",
+            dokument="WDT/1/2026",
+            data_wystawienia="2026-04-01",
+            data_sprzedazy="2026-04-01",
+            netto=10000,
+            vat=0,
+            stawka=0,
+            procedury=["WDT"],
+        )
+    ]
+
+    builder = JPKBuilderPROPlus(
+        rok=2026,
+        miesiac=4,
+        podmiot={
+            "nip": "6791444505",
+            "nazwa": "Dariusz Polzer",
+            "kod_urzedu": "1214",
+            "email": "test@example.com",
+            "telefon": "123456789",
+            "data_urodzenia": "1980-01-01",
+        },
+    )
+
+    jpk_dict = builder.build(sprzedaz, [])
+    deklaracja = jpk_dict["Deklaracja"]["PozycjeSzczegolowe"]
+
+    assert deklaracja["P_25"] == 10000
+
+    row = jpk_dict["Ewidencja"]["SprzedazWiersz"][0]
+    assert row["WDT"] == "1"
+
+    jpk_model = dict_to_jpk_model(jpk_dict)
+
+    output_xml = tmp_path / "jpk_wdt.xml"
+
+    generator = JPKGeneratorPRO()
+    generator.generate(jpk_model, str(output_xml))
+
+    assert validate_jpk(str(output_xml), str(xsd_path)) is True
+
+
+def test_generated_jpk_with_export_exp_passes_xsd_validation(tmp_path):
+    xsd_path = Path("validator/JPK_V7M_3.xsd")
+
+    if not xsd_path.exists():
+        xsd_path = Path("ksef2jpk/validator/JPK_V7M_3.xsd")
+
+    assert xsd_path.exists()
+
+    sprzedaz = [
+        WierszEwidencji(
+            typ="sprzedaz",
+            kontrahent_nip="GB123456789",
+            kontrahent_nazwa="UK Buyer",
+            nr_ksef="",
+            dokument="EXP/1/2026",
+            data_wystawienia="2026-04-01",
+            data_sprzedazy="2026-04-01",
+            netto=15000,
+            vat=0,
+            stawka=0,
+            procedury=["EXP"],
+        )
+    ]
+
+    builder = JPKBuilderPROPlus(
+        rok=2026,
+        miesiac=4,
+        podmiot={
+            "nip": "6791444505",
+            "nazwa": "Dariusz Polzer",
+            "kod_urzedu": "1214",
+            "email": "test@example.com",
+            "telefon": "123456789",
+            "data_urodzenia": "1980-01-01",
+        },
+    )
+
+    jpk_dict = builder.build(sprzedaz, [])
+
+    deklaracja = jpk_dict["Deklaracja"]["PozycjeSzczegolowe"]
+
+    assert deklaracja["P_29"] == 15000
+
+    row = jpk_dict["Ewidencja"]["SprzedazWiersz"][0]
+
+    assert row["Eksport"] == "1"
+
+    jpk_model = dict_to_jpk_model(jpk_dict)
+
+    output_xml = tmp_path / "jpk_exp.xml"
+
+    generator = JPKGeneratorPRO()
+    generator.generate(jpk_model, str(output_xml))
+
+    assert validate_jpk(str(output_xml), str(xsd_path)) is True
+
+===== FILE END: tests/test_xsd_validation.py =====
 
 
 ===== FILE START: update-venv.ps1 =====
