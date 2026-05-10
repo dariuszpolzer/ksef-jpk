@@ -214,3 +214,52 @@ def test_parser_detects_mpp(tmp_path):
     p = faktura.pozycje[0]
 
     assert "MPP" in (p.procedury or [])
+
+
+def test_parser_handles_oo_procedure(tmp_path):
+    xml = """<?xml version="1.0" encoding="UTF-8"?>
+    <Faktura xmlns="http://crd.gov.pl/wzor/2025/06/25/13775/">
+
+      <Podmiot1>
+        <DaneIdentyfikacyjne>
+          <NIP>6791444505</NIP>
+          <Nazwa>Seller</Nazwa>
+        </DaneIdentyfikacyjne>
+      </Podmiot1>
+
+      <Podmiot2>
+        <DaneIdentyfikacyjne>
+          <NIP>1234567890</NIP>
+          <Nazwa>Buyer</Nazwa>
+        </DaneIdentyfikacyjne>
+      </Podmiot2>
+
+      <Fa>
+        <P_1>2026-03-24</P_1>
+        <P_2>FV/OO/1</P_2>
+        <P_6>2026-03-24</P_6>
+
+        <FaWiersz>
+          <P_7>Usługa OO</P_7>
+          <P_11>5000</P_11>
+          <P_12>OO</P_12>
+        </FaWiersz>
+
+      </Fa>
+    </Faktura>
+    """
+
+    xml_file = tmp_path / "oo.xml"
+    xml_file.write_text(xml, encoding="utf-8")
+
+    parser = KSeFParser("6791444505")
+    faktura = parser.parse(str(xml_file))
+
+    assert len(faktura.pozycje) == 1
+
+    p = faktura.pozycje[0]
+
+    assert p.netto == 5000.0
+    assert p.vat == 0.0
+    assert p.stawka is None
+    assert "OO" in (p.procedury or [])

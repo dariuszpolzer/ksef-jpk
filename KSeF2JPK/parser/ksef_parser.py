@@ -388,8 +388,12 @@ class KSeFParser:
                 stawka = None
                 vat_dec = vat_from_xml if vat_from_xml is not None else Decimal("0.00")
 
-                if stawka_norm in {"ZW", "NP", "OO"}:
+                if stawka_norm in {"ZW", "NP"}:
                     procedury.append(stawka_norm)
+
+                if stawka_norm == "OO":
+                    procedury.append("OO")
+                    vat_dec = Decimal("0.00")
 
             netto_dec, vat_dec = self._normalize_correction_sign(
                 netto_dec,

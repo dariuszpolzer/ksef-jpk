@@ -149,8 +149,12 @@ class JPKBuilderPROPlus:
         for w in zakupy:
             netto = float(w.netto or 0)
             vat = float(w.vat or 0)
+            procedury = set(w.procedury or [])
 
-            if vat:
+            if "IMP" in procedury:
+                d["P_45"] += netto
+                d["P_46"] += vat
+            elif vat:
                 d["P_42"] += netto
                 d["P_43"] += vat
 
@@ -281,18 +285,20 @@ class JPKBuilderPROPlus:
             else:
                 row["OFF"] = "1"
 
+            procedury = set(w.procedury or [])
+
+            is_imp = "IMP" in procedury
+
             row.update(
                 {
-                    "K_42": w.netto if w.vat else 0,
-                    "K_43": w.vat if w.vat else 0,
+                    "K_42": 0 if is_imp else (w.netto if w.vat else 0),
+                    "K_43": 0 if is_imp else (w.vat if w.vat else 0),
                     "K_44": 0,
-                    "K_45": 0,
-                    "K_46": 0,
+                    "K_45": w.netto if is_imp else 0,
+                    "K_46": w.vat if is_imp else 0,
                     "K_47": 0,
                 }
             )
-
-            procedury = set(w.procedury or [])
             if "IMP" in procedury:
                 row["IMP"] = "1"
             if "MPP" in procedury:
@@ -321,7 +327,13 @@ class JPKBuilderPROPlus:
         zakup_ctrl = {
             "LiczbaWierszyZakupow": len(zakup_wiersze),
             "PodatekNaliczony": round(
-                sum(float(w.get("K_43", 0)) for w in zakup_wiersze),
+                sum(
+                    float(w.get("K_43", 0))
+                    + float(w.get("K_45", 0))
+                    + float(w.get("K_46", 0))
+                    + float(w.get("K_47", 0))
+                    for w in zakup_wiersze
+                ),
                 2,
             ),
         }
