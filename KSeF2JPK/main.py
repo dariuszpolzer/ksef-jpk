@@ -1,4 +1,5 @@
 import argparse
+import csv
 import glob
 import json
 import os
@@ -224,6 +225,7 @@ def init_quality_stats() -> dict:
         "korekty": 0,
         "input_xml_skipped": 0,
         "input_validation_warning": 0,
+        "duplicates_skipped": 0,
     }
 
 
@@ -253,6 +255,107 @@ def update_quality_stats(stats: dict, faktura) -> None:
     walidacja = faktura.meta.get("walidacja_wejscia", {})
     if walidacja and not walidacja.get("ok", True):
         stats["input_validation_warning"] += 1
+
+
+def write_quality_csv(output_path, parsed_records, mapped_rows):
+    """
+    Raport jakości danych po parsowaniu i mapowaniu.
+    parsed_records = []
+
+    parsed_records.append(
+        {
+            "filename": filename,
+            "faktura": faktura,
+        }
+    )
+
+    mapped_rows: lista WierszEwidencji
+    """
+
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    rows_by_document = {}
+    for row in mapped_rows:
+        rows_by_document.setdefault(row.dokument, []).append(row)
+
+    fieldnames = [
+        "filename",
+        "numer",
+        "nr_ksef",
+        "typ",
+        "data_wystawienia",
+        "data_sprzedazy",
+        "kontrahent_nip",
+        "kontrahent_nazwa",
+        "netto",
+        "vat",
+        "gtu",
+        "procedury",
+        "is_korekta",
+        "kontrola_sum_ok",
+        "walidacja_ok",
+        "ostrzezenia",
+    ]
+
+    with output_path.open("w", newline="", encoding="utf-8-sig") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames, delimiter=";")
+        writer.writeheader()
+
+        for record in parsed_records:
+            filename = record["filename"]
+            faktura = record["faktura"]
+            meta = faktura.meta or {}
+
+            numer = meta.get("numer") or faktura.nr_ksef or "BRAK"
+            related_rows = rows_by_document.get(numer, [])
+
+            kontrola_sum = meta.get("kontrola_sum", {})
+            walidacja = meta.get("walidacja_wejscia", {})
+
+            if related_rows:
+                netto = sum(float(r.netto or 0) for r in related_rows)
+                vat = sum(float(r.vat or 0) for r in related_rows)
+                gtu = sorted({r.gtu for r in related_rows if r.gtu})
+                procedury = sorted({proc for r in related_rows for proc in (r.procedury or []) if proc})
+            else:
+                netto = meta.get("netto_razem", 0)
+                vat = meta.get("vat_razem", 0)
+                gtu = []
+                procedury = meta.get("procedury", [])
+
+            if meta.get("typ") == "sprzedaz":
+                kontrahent_nip = meta.get("nip_nabywcy", "")
+                kontrahent_nazwa = meta.get("nazwa_nabywcy", "")
+            elif meta.get("typ") == "zakup":
+                kontrahent_nip = meta.get("nip_sprzedawcy", "")
+                kontrahent_nazwa = meta.get("nazwa_sprzedawcy", "")
+            else:
+                kontrahent_nip = ""
+                kontrahent_nazwa = ""
+
+            writer.writerow(
+                {
+                    "filename": filename,
+                    "numer": meta.get("numer", ""),
+                    "nr_ksef": faktura.nr_ksef or meta.get("nr_ksef", ""),
+                    "typ": meta.get("typ", ""),
+                    "data_wystawienia": meta.get("data_wystawienia", ""),
+                    "data_sprzedazy": meta.get("data_sprzedazy", ""),
+                    "kontrahent_nip": kontrahent_nip,
+                    "kontrahent_nazwa": kontrahent_nazwa,
+                    "netto": round(float(netto or 0), 2),
+                    "vat": round(float(vat or 0), 2),
+                    "gtu": ",".join(gtu),
+                    "procedury": ",".join(procedury),
+                    "is_korekta": bool(meta.get("is_korekta")),
+                    "kontrola_sum_ok": kontrola_sum.get("all_ok", ""),
+                    "walidacja_ok": walidacja.get("ok", ""),
+                    "ostrzezenia": " | ".join(walidacja.get("warnings", [])),
+                }
+            )
+
+    print(f"[OK] Raport jakości CSV: {output_path}")
 
 
 # ------------------------------------------------------------
@@ -289,10 +392,11 @@ def main():
     print_section("1. PARSOWANIE FAKTUR")
 
     faktury = []
+    parsed_records = []
     parse_errors = []
     skipped_by_date = []
     skipped_corrections = []
-
+    seen_documents = set()
     for path in paths:
         filename = os.path.basename(path)
 
@@ -334,9 +438,24 @@ def main():
                         f"[POMINIĘTO] {filename} | " f"typ={faktura.meta.get('typ')!r} | " f"data_filtra={skip_date!r}"
                     )
                     continue
+            dedup_key = faktura.nr_ksef or faktura.meta.get("nr_ksef") or faktura.meta.get("numer")
+            if dedup_key in seen_documents:
+                print(
+                    f"[POMINIĘTO DUPLIKAT] {filename} | "
+                    f"klucz={dedup_key!r}"
+                    )
+                quality_stats["duplicates_skipped"] += 1
+                continue
 
+            seen_documents.add(dedup_key)
             faktury.append(faktura)
-
+                    
+            parsed_records.append(
+                {
+                    "filename": filename,
+                    "faktura": faktura,
+                }
+            )
             kontrola_sum = faktura.meta.get("kontrola_sum", {})
             print(
                 f"[OK] {filename} | "
@@ -432,10 +551,17 @@ def main():
         for doc, err in map_errors:
             print(f"• {doc}: {err}")
 
+    quality_csv_path = Path.home() / "Documents" / "JPK" / "REPORTS" / f"quality_report_{JPK_MIESIAC:02d}_{JPK_ROK}.csv"
+
+    write_quality_csv(
+        quality_csv_path,
+        parsed_records,
+        wiersze,
+    )
+
     if not wiersze:
         print("\n❌ Brak poprawnie zmapowanych wierszy. Kończę.")
         return
-
     # -----------------------------------------------------------------
     # 3. PODZIAŁ NA SPRZEDAŻ / ZAKUP
     # -----------------------------------------------------------------
@@ -545,6 +671,7 @@ def main():
     print(f"Faktury z procedurami:          {quality_stats['with_procedury']}")
     print(f"Ostrzeżenia kontroli sum:       {quality_stats['sum_warning']}")
     print(f"Wykryte korekty:                {quality_stats['korekty']}")
+    print(f"Pominięte duplikaty:            {quality_stats['duplicates_skipped']}")
 
     print("")
     print(f"Plik wynikowy:                  {OUTPUT_XML}")
