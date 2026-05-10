@@ -132,4 +132,4 @@ def test_builder_maps_imp_purchase_to_k45_k46():
     assert row["K_46"] == 2300
 
     assert deklaracja["P_45"] == 10000
-    assert deklaracja["P_46"] == 2300
+    assert deklaracja["P_46"] == 0

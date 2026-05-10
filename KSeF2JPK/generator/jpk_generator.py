@@ -193,6 +193,9 @@ class JPKGeneratorPRO:
             "P_ORDZU",
         ]:
             val = getattr(jpk_model.deklaracja, pole, None)
+            if pole == "P_32" and not self.is_zeroish(getattr(jpk_model.deklaracja, "P_31", 0)):
+                ET.SubElement(poz, f"{{{ns_jpk}}}{pole}").text = "0"
+                continue
 
             if pole in required_zero_fields:
                 if val is None:
@@ -251,7 +254,7 @@ class JPKGeneratorPRO:
                 # procedury / oznaczenia
                 self.add_if_present(sw, ns_jpk, "WDT", getattr(w, "WDT", None))
                 self.add_if_present(sw, ns_jpk, "Eksport", getattr(w, "Eksport", None))
-                self.add_if_present(sw, ns_jpk, "OO", getattr(w, "OO", None))
+                # self.add_if_present(sw, ns_jpk, "OO", getattr(w, "OO", None))
                 # self.add_if_present(sw, ns_jpk, "MPP", getattr(w, "MPP", None))
                 self.add_if_present(sw, ns_jpk, "Marza", getattr(w, "Marza", None))
                 self.add_if_present(sw, ns_jpk, "SW", getattr(w, "SW", None))
@@ -317,7 +320,7 @@ class JPKGeneratorPRO:
                 # UWAGA: GTU nie emitujemy w zakupach
                 self.add_if_present(zw, ns_jpk, "IMP", getattr(w, "IMP", None))
                 # self.add_if_present(zw, ns_jpk, "MPP", getattr(w, "MPP", None))
-                self.add_if_present(zw, ns_jpk, "OO", getattr(w, "OO", None))
+                # self.add_if_present(zw, ns_jpk, "OO", getattr(w, "OO", None))
                 self.add_if_present(zw, ns_jpk, "VAT_RR", getattr(w, "VAT_RR", None))
 
                 self.add_if_nonzero(zw, ns_jpk, "K_42", getattr(w, "K_42", 0))

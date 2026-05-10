@@ -143,7 +143,7 @@ class JPKBuilderPROPlus:
                 d["P_29"] += netto
             if "OO" in procedury:
                 d["P_31"] += netto
-            if stawka is None or "ZW" in procedury or "NP" in procedury:
+            if "OO" not in procedury and (stawka is None or "ZW" in procedury or "NP" in procedury):
                 d["P_35"] += netto
 
         for w in zakupy:
@@ -153,7 +153,6 @@ class JPKBuilderPROPlus:
 
             if "IMP" in procedury:
                 d["P_45"] += netto
-                d["P_46"] += vat
             elif vat:
                 d["P_42"] += netto
                 d["P_43"] += vat
