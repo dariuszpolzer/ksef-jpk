@@ -162,6 +162,8 @@ class KSeFParser:
         vat_nag = self._decimal_or_none(meta.get("suma_vat_naglowek")) or Decimal("0.00")
         brutto_nag = self._decimal_or_none(meta.get("suma_brutto_naglowek")) or Decimal("0.00")
 
+        is_korekta = bool(meta.get("is_korekta"))
+
         result = {
             "pozycje_netto": float(netto_poz),
             "pozycje_vat": float(vat_poz),
@@ -169,12 +171,32 @@ class KSeFParser:
             "naglowek_netto": float(netto_nag),
             "naglowek_vat": float(vat_nag),
             "naglowek_brutto": float(brutto_nag),
-            "netto_ok": self._is_close(netto_poz, netto_nag),
-            "vat_ok": self._is_close(vat_poz, vat_nag),
-            "brutto_ok": self._is_close(brutto_poz, brutto_nag),
+            "is_korekta": is_korekta,
         }
 
+        if is_korekta:
+            # Dla KOR parser księgowo przekształca wartości do JPK:
+            # - bierze tylko StanPrzed,
+            # - odwraca znak na minus.
+            # Nagłówek KSeF może pokazywać wartości po korekcie, np. P_15 = 0,
+            # więc zwykłe porównanie pozycji z nagłówkiem daje fałszywy warning.
+            result.update(
+                {
+                    "netto_ok": True,
+                    "vat_ok": True,
+                    "brutto_ok": True,
+                    "all_ok": True,
+                    "mode": "kor_skip_header_compare",
+                }
+            )
+            return result
+
+        result["netto_ok"] = self._is_close(netto_poz, netto_nag)
+        result["vat_ok"] = self._is_close(vat_poz, vat_nag)
+        result["brutto_ok"] = self._is_close(brutto_poz, brutto_nag)
         result["all_ok"] = result["netto_ok"] and result["vat_ok"] and result["brutto_ok"]
+        result["mode"] = "standard"
+
         return result
 
     def parse(self, xml_path):
