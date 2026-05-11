@@ -1,10 +1,67 @@
 # KSEF2JPK
 
-## Generator JPK_V7M z faktur KSeF
+![Python](https://img.shields.io/badge/python-3.13-blue)
+![Tests](https://img.shields.io/badge/tests-pytest-green)
+![License](https://img.shields.io/badge/license-MIT-lightgrey)
+## KSeF → JPK_V7M program do walidacji i konwersji.
 
-Narzędzie w **Pythonie** do budowy pliku **JPK_V7M** na podstawie faktur XML pobranych z **KSeF**.
+# Spis treści
 
-Program analizuje faktury KSeF, mapuje dane do ewidencji VAT i generuje poprawny plik **JPK_V7M XML zgodny ze schemą Ministerstwa Finansów**.
+- [Status projektu](#status-projektu)
+- [Funkcje](#funkcje)
+- [Pipeline](#pipeline)
+- [Architektura projektu](#architektura-projektu)
+- [Logika okresu JPK](#logika-okresu-jpk)
+- [Obsługa NrKSeF](#obsługa-nrksef)
+- [GTU](#gtu)
+- [Procedury VAT](#procedury-vat)
+- [Faktury korygujące](#faktury-korygujące)
+- [Deduplikacja](#deduplikacja)
+- [Walidacja](#walidacja)
+- [Raporty jakości](#raporty-jakości)
+- [Bezpieczeństwo](#bezpieczeństwo)
+- [Uwagi dotyczące obliczeń finansowych](#uwagi-dotyczące-obliczeń-finansowych)
+- [Znane ograniczenia](#znane-ograniczenia)
+- [Development](#development)
+- [Quick start](#quick-start)
+- [Przykładowe uruchomienie](#przykładowe-uruchomienie)
+- [Przykładowy workflow](#przykładowy-workflow)
+- [Typowe zastosowania](#typowe-zastosowania)
+- [Disclaimer](#disclaimer)
+- [CI/CD](#cicd)
+- [Licencja](#licencja)
+- [Autor](#autor)
+
+Narzędzie napisane w Pythonie do budowy plików **JPK_V7M** na podstawie faktur XML pobranych z systemu **KSeF**.
+
+Projekt analizuje dane z faktur KSeF, mapuje je do ewidencji VAT, wykonuje walidację biznesową oraz generuje poprawny plik XML zgodny ze schemami Ministerstwa Finansów.
+
+---
+# Quick start
+
+```bash
+git clone ...
+cd ...
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+python -m ksef2jpk.main --year 2026 --month 5
+```
+
+---
+# Status projektu
+
+Projekt przeznaczony jest głównie dla małych firm do:
+
+- automatyzacji przygotowania JPK_V7M,
+- walidacji danych VAT,
+- kontroli jakości danych księgowych,
+- zastosowań wewnętrznych i eksperckich,
+- budowy pipeline przetwarzania dokumentów KSeF.
+
+Projekt nie stanowi systemu księgowego ani doradztwa podatkowego.
+
+Niektóre klasyfikacje (GTU, procedury VAT, korekty, przypadki cross-border) wykorzystują logikę heurystyczną i wymagają weryfikacji księgowej przed produkcyjną wysyłką JPK.
 
 ---
 
@@ -12,355 +69,440 @@ Program analizuje faktury KSeF, mapuje dane do ewidencji VAT i generuje poprawny
 
 Program:
 
-* parsuje faktury XML z KSeF
-* rozpoznaje **sprzedaż / zakup**
-* mapuje dane do **ewidencji VAT**
-* buduje strukturę **JPK_V7M**
-* generuje XML zgodny z **XSD MF**
-* waliduje plik względem schemy
-* generuje **podgląd HTML JPK**
-* generuje **raport jakości danych**
+- parsuje faktury XML z KSeF,
+- rozpoznaje sprzedaż i zakup,
+- mapuje dane do ewidencji VAT,
+- buduje strukturę JPK_V7M,
+- generuje XML zgodny ze schemą MF,
+- wykonuje walidację XSD,
+- wykonuje walidację biznesową VAT,
+- kontroluje sumy kontrolne,
+- wykrywa duplikaty dokumentów,
+- rozpoznaje korekty KOR,
+- klasyfikuje GTU,
+- wykrywa procedury VAT,
+- generuje raporty jakości,
+- tworzy HTML preview JPK,
+- generuje raporty CSV,
+- tworzy dane diagnostyczne i audit/debug reports.
 
 ---
 
 # Pipeline
 
-```
+```text
 KSeF XML
    ↓
-parser
+Parser
    ↓
-klasyfikacja VAT
+FakturaModel
    ↓
-mapowanie ewidencji
+GTU / procedures classifier
    ↓
-budowa JPK
+Date filtering
    ↓
-generator XML
+Deduplication
    ↓
-walidacja XSD
+Mapper
    ↓
-podgląd HTML
+Wiersze ewidencji
+   ↓
+Builder
+   ↓
+JPKModel
+   ↓
+Generator XML
+   ↓
+Validator XSD
+   ↓
+HTML / CSV / QA reports
 ```
 
 ---
 
-# Diagram działania
+# Architektura projektu
 
-```mermaid
-flowchart TD
-
-A[KSeF XML] --> B[KSeF Parser]
-
-B --> C[Klasyfikacja VAT]
-C --> C1[Sprzedaż]
-C --> C2[Zakup]
-
-C1 --> D[Mapper JPK]
-C2 --> D
-
-D --> E[Wiersze ewidencji VAT]
-
-E --> F[Builder JPK]
-F --> G[Generator XML]
-
-G --> H[JPK_V7M XML]
-H --> I[Walidacja XSD]
-
-H --> J[Podgląd HTML]
-```
-
----
-
-# Obsługiwane elementy
-
-✔ sprzedaż / zakup
-✔ GTU
-✔ procedury (informacyjne)
-✔ kontrola sum faktury
-✔ rozpoznanie korekt
-✔ raport jakości danych
-
----
-
-## Struktura projektu
-
-```
+```text
 ksef2jpk/
 │
-├── main.py
-│   Główny pipeline programu:
-│   - wczytanie konfiguracji
-│   - parsowanie faktur
-│   - klasyfikacja VAT
-│   - budowa JPK
-│   - walidacja XSD
-│   - raport jakości
+├── adapter/        # adaptery i transformacje modeli
+├── builder/        # budowa struktur JPK
+├── classifier/     # GTU i procedury VAT
+├── generator/      # generowanie XML
+├── mapper/         # mapowanie ewidencji VAT
+├── model/          # modele domenowe
+├── parser/         # parsery KSeF XML
+├── utils/          # narzędzia pomocnicze
+├── validator/      # walidacja XSD i QA
 │
-├── config.json
-│   Konfiguracja systemu:
-│   - katalog wejściowy XML
-│   - katalog wynikowy JPK
-│   - ścieżka do XSD
-│   - dane podatnika
-│
-├── parser/
-│   └── ksef_parser.py
-│       Parser faktur KSeF XML
-│
-├── classifier/
-│   └── jpk_flags.py
-│       Klasyfikacja podatkowa:
-│       - sprzedaż / zakup
-│       - GTU
-│       - procedury (MPP itp.)
-│
-├── mapper/
-│   └── jpk_mapper.py
-│       Mapowanie faktur do wierszy ewidencji VAT
-│
-├── builder/
-│   └── jpk_builder.py
-│       Budowa struktury JPK
-│
-├── adapter/
-│   └── jpk_adapter.py
-│       Konwersja danych do modelu JPK
-│
-├── generator/
-│   └── jpk_generator.py
-│       Generowanie pliku XML JPK_V7M
-│
-├── validator/
-│   ├── validate_jpk.py
-│   └── JPK_V7M_3.xsd
-│       Walidacja względem schemy MF
-│
-├── model/
-│   ├── faktura_model.py
-│   ├── jpk_model.py
-│   └── deklaracja_model.py
-│
-└── utils/
-    ├── ksef_number.py
-    ├── policz_xml_w_katalogu.py
-    └── jpk2html.py
-```
-
-
-# Integracja z ksef-sync
-
-Program może czytać faktury bezpośrednio z **batcha wygenerowanego przez ksef-sync**.
-
-Przykład katalogu:
-
-```
-ksef-sync/data/batches/
-   20260424T123004Z/
-      invoices/
-      pdf/
-      logs/
-      manifest.json
-```
-
-Wtedy `input_dir` wskazuje na:
-
-```
-.../batches/<batch_id>/invoices
+├── tests/          # testy
+├── tools/          # narzędzia developerskie
+└── output/         # wygenerowane raporty/JPK
 ```
 
 ---
+## Diagram działania
 
-# Konfiguracja
+```mermaid
+flowchart LR
 
-Projekt wymaga pliku:
-
+Parser --> Mapper
+Mapper --> Builder
+Builder --> Generator
+Generator --> Validator
 ```
-config.json
-```
+---
 
-Przykład:
+# Logika okresu JPK
 
-```json
-{
-  "input_dir": "C:/KSeF/XML",
-  "xml_dir": "C:/JPK/XML",
-  "html_dir": "C:/JPK/HTML",
-  "xsd_path": "validator/JPK_V7M_3.xsd",
+Filtrowanie dokumentów do okresu JPK odbywa się według:
 
-  "jpk_rok": 2026,
-  "jpk_miesiac": 4,
+- sprzedaż → data sprzedaży,
+- zakup → data wpływu/otrzymania,
+- data wystawienia używana jest wyłącznie jako mechanizm awaryjny.
 
-  "enable_date_filter": true,
-
-  "output_file_pattern": "JPK_{podatnik}_{miesiac}_{rok}.xml",
-
-  "podmiot": {
-    "nip": "0000000000",
-    "nazwa": "Example Company",
-    "kod_urzedu": "0000"
-  }
-}
-```
-
-Najważniejsze pola:
-
-| pole        | znaczenie                     |
-| ----------- | ----------------------------- |
-| input_dir   | katalog z fakturami XML       |
-| xml_dir     | katalog wynikowych plików JPK |
-| html_dir    | katalog podglądu HTML         |
-| xsd_path    | ścieżka do schemy MF          |
-| podmiot.nip | NIP podatnika                 |
+Faktury spoza wybranego okresu mogą zostać automatycznie pominięte.
 
 ---
 
-# Uruchomienie
+# Obsługa NrKSeF
 
-W katalogu projektu:
+Program preferuje NrKSeF zapisany w XML.
 
-```
-python -m ksef2jpk.main
-```
+Jeżeli numer nie istnieje w XML, system może:
 
----
+- odczytać NrKSeF z nazwy pliku,
+- oznaczyć dokument jako wymagający weryfikacji.
 
-# Wynik działania
+NrKSeF wykorzystywany jest również do:
 
-Program generuje:
-
-```
-JPK/XML/
-   JPK_xxx.xml
-
-JPK/HTML/
-   JPK_xxx.html
-```
-
-oraz raport w konsoli zawierający:
-
-* podsumowanie przetworzonych faktur
-* kontrolę sum
-* raport jakości danych
-* informację o wykrytych korektach
+- deduplikacji,
+- identyfikowalności,
+- raportowania jakości.
 
 ---
 
-# Raport jakości danych
+# GTU
 
-Przykład:
+GTU emitowane są wyłącznie dla ewidencji sprzedaży.
 
-```
-Liczba plików wejściowych:      4
-Poprawnie sparsowane faktury:   4
-Poprawnie zmapowane wiersze:    4
+Program nie przypisuje GTU do ewidencji zakupów.
 
-Wiersze sprzedaży:              1
-Wiersze zakupu:                 3
-
----- RAPORT JAKOŚCI DANYCH ----
-
-NrKSeF z XML:                   0
-NrKSeF z nazwy pliku:           4
-Bez NrKSeF:                     0
-
-Faktury z GTU:                  3
-Faktury z procedurami:          1
-
-Ostrzeżenia kontroli sum:       0
-Wykryte korekty:                0
-```
+Klasyfikacja GTU może wykorzystywać heurystyki i wymagać weryfikacji księgowej.
 
 ---
 
-# Filtr okresu JPK
+# Procedury VAT
 
-Jeżeli w `config.json`:
+Projekt wspiera wykrywanie procedur takich jak:
 
-```
-enable_date_filter = true
-```
+- MPP,
+- WDT,
+- EXP,
+- OO,
+- IMP,
+- TP,
+- SW,
+- EE.
 
-program uwzględnia tylko faktury z okresu:
+Wykrywanie procedur może być częściowo heurystyczne.
 
-```
-rok / miesiąc
-```
-
-Logika dat:
-
-| typ      | używana data   |
-| -------- | -------------- |
-| sprzedaż | data_sprzedazy |
-| zakup    | data_wplywu    |
+Przypadki eksportowe, importowe i cross-border wymagają kontroli księgowej przed wysyłką produkcyjną.
 
 ---
 
-# Korekty
+# Faktury korygujące
 
-Parser wykrywa korekty:
+Projekt rozpoznaje dokumenty typu KOR.
 
-```
-RodzajFaktury = KOR
-```
+Obsługiwane są m.in.:
 
-Korekty są:
+- numer dokumentu pierwotnego,
+- data dokumentu pierwotnego,
+- powód korekty,
+- raportowanie korekt.
 
-✔ wykrywane
-✔ raportowane
+Złożone przypadki korekt mogą wymagać dodatkowej walidacji księgowej.
 
-ale **nie są jeszcze księgowane w JPK**.
+---
+
+# Deduplikacja
+
+System wykrywa duplikaty dokumentów.
+
+Priorytet identyfikacji:
+
+1. NrKSeF
+2. mechanizm awaryjny do danych faktury
+
+Pominięte duplikaty raportowane są w quality reports.
 
 ---
 
 # Walidacja
 
-Wygenerowany plik JPK jest walidowany względem:
+Projekt wykonuje:
 
+- walidację XML względem schem XSD MF,
+- kontrolę sum kontrolnych,
+- walidację ewidencji VAT,
+- kontrolę spójności danych,
+- wykrywanie duplikatów,
+- raportowanie ostrzeżeń,
+- diagnostykę jakości danych.
+
+---
+
+# Raporty jakości
+
+Program może generować:
+
+- podgląd HTML
+- raporty CSV,
+- dashboardy jakości,
+- raporty walidacji,
+- diagnostykę GTU,
+- raporty procedur VAT,
+- raporty duplikatów,
+- raporty korekt,
+- audit/debug reports.
+
+---
+
+# 🛡️ Bezpieczeństwo
+
+> [!WARNING]
+> Projekt nie wysyła danych do zewnętrznych usług.
+> Całość przetwarzania odbywa się lokalnie.
+
+Projekt przetwarza dane podatkowe i księgowe:
+
+- NIP,
+- numery faktur,
+- NrKSeF,
+- dane kontrahentów,
+- wartości VAT/netto/brutto.
+
+Nie należy publikować:
+
+- config.json,
+- wygenerowanych JPK,
+- raportów produkcyjnych,
+- danych klientów,
+- snapshotów zawierających dane biznesowe.
+
+Przed udostępnieniem danych należy wykonać anonimizację.
+
+---
+
+# Uwagi dotyczące obliczeń finansowych
+
+Historycznie część logiki projektu wykorzystuje typ `float`.
+
+Nowe funkcjonalności finansowe powinny wykorzystywać `Decimal`.
+
+Zmiany dotyczące:
+
+- agregacji VAT,
+- sum kontrolnych,
+- korekt,
+- deklaracji,
+- zaokrągleń
+
+powinny być objęte testami regresyjnymi.
+
+---
+
+# Znane ograniczenia
+
+Aktualne ograniczenia projektu:
+
+- część klasyfikacji GTU wykorzystuje heurystyki,
+- procedury VAT wymagają weryfikacji księgowej,
+- złożone przypadki cross-border mogą wymagać ręcznej kontroli,
+- część starszego kodu nadal wykorzystuje float,
+- nie wszystkie przypadki KOR są w pełni zautomatyzowane,
+- klasyfikacja podatkowa nie zastępuje interpretacji księgowej.
+
+---
+
+# Development
+
+## Wymagania
+
+- Python 3.11+
+- pytest
+- ruff
+- black
+- bandit
+
+---
+
+## Instalacja
+
+### Klonowanie repozytorium
+```bash
+git clone https://github.com/dpolz/ksef2jpk.git
+cd ksef2jpk
 ```
-XSD Ministerstwa Finansów
+## Środowisko Python
+
+Utworzenie i aktywacja virtual environment:
+```bash
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+```
+Aktualizacja pip i instalacja zależności:
+
+```bash
+python -m pip install --upgrade pip
+pip install -r requirements.txt
 ```
 
-Jeżeli walidacja przejdzie:
+Instalacja narzędzi developerskich:
 
+```bash
+pip install -e ".[dev]"
 ```
+---
+
+# Przykładowe uruchomienie
+
+```powershell
+python -m ksef2jpk.main --year 2026 --month 5
+```
+
+Przykładowy wynik:
+
+```text
+Katalog faktur wejściowych:
+.../data/input/invoices
+
+Batch ID: <batch-id>
+
+================================================================================
+1. PARSOWANIE FAKTUR
+================================================================================
+
+[OK] example-invoice.xml
+typ='zakup'
+nr_ksef='<nr-ksef>'
+nip_sprzedawcy='0000000000'
+nip_nabywcy='1111111111'
+data_wystawienia='2026-05-05'
+kontrola_sum=True
+
+================================================================================
+2. MAPOWANIE DO WIERSZY EWIDENCJI
+================================================================================
+
+[OK] typ='zakup'
+netto=108.96
+vat=25.06
+stawka=23.0
+
+================================================================================
+3. BUDOWA JPK
+================================================================================
+
+[OK] Zbudowano strukturę JPK.
+
+================================================================================
+4. GENEROWANIE XML
+================================================================================
+
+[OK] Wygenerowano:
+.../JPK/XML/JPK_EXAMPLE_05_2026.xml
+
+================================================================================
+5. WALIDACJA XSD
+================================================================================
+
 ✔ JPK jest poprawny zgodnie z XSD MF
 ```
 
----
+## Testy
 
-# Wymagania
-
-Python:
-
+```bash
+pytest
 ```
-Python 3.10+
-```
-
-Biblioteki:
-
-```
-standard library
-```
-
-(brak zewnętrznych zależności)
 
 ---
 
-# Status projektu
+## Formatowanie kodu
 
+```bash
+black .
+ruff check .
 ```
-Wersja: MVP stabilne
-```
-
-Funkcjonalność:
-
-✔ generowanie poprawnego JPK
-✔ walidacja XSD
-✔ raport jakości danych
 
 ---
 
-# Autor
+## Security scan
 
-Projekt narzędzia do automatycznego generowania plików **JPK_V7M** na podstawie faktur XML z **KSeF**.
+```bash
+bandit -r ksef2jpk
+```
+
+---
+
+# Przykładowy przebieg przetwarzania
+
+```text
+1. Pobranie faktur KSeF
+2. Parsowanie XML
+3. Mapowanie VAT
+4. Klasyfikacja GTU/procedur
+5. Deduplikacja
+6. Walidacja biznesowa
+7. Budowa JPK_V7M
+8. Generacja XML
+9. Walidacja XSD
+10. Raporty jakości
+```
+
+---
+
+# Typowe zastosowania
+
+Projekt może być wykorzystywany do:
+
+- automatyzacji JPK,
+- QA danych księgowych,
+- prewalidacji danych VAT,
+- budowy pipeline podatkowych,
+- integracji z KSeF,
+- analiz jakości danych,
+- generowania raportów kontrolnych.
+
+---
+
+# ⚠️ Disclaimer
+
+> [!WARNING]
+>Autor projektu nie ponosi odpowiedzialności za skutki podatkowe wynikające z błędnej klasyfikacji dokumentów, GTU, procedur VAT lub korekt.
+
+> Wygenerowane pliki JPK powinny zostać zweryfikowane
+> przez księgowość lub doradcę podatkowego
+> przed wysyłką do Ministerstwa Finansów.
+
+---
+## CI/CD
+
+Projekt wykorzystuje GitHub Actions do:
+- uruchamiania testów,
+- lintingu,
+- kontroli jakości kodu.
+
+## Licencja
+
+Projekt jest udostępniany na licencji MIT.
+
+Możesz używać, modyfikować i rozpowszechniać projekt również komercyjnie,
+pod warunkiem zachowania informacji o autorze i treści licencji.
+
+Szczegółowe warunki znajdują się w pliku `LICENSE`.
+
+## Autor
+
+Dariusz Polzer

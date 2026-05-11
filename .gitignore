@@ -1,34 +1,55 @@
-# python
+# Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
+.coverage
+htmlcov/
 
-# pytest
-.pytest_cache/
-
-# venv
+# Virtual environment
 venv/
 .env
 
-# build
-dist/
+# Build
 build/
+dist/
+*.egg-info/
+
+# Pytest / tooling
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
 
 # IDE
 .vscode/
 .idea/
 
-# logs
+# Logs
 logs/
 
-# output
+# Project generated data
+data/
+keys/
+auth/
+batches/
+exports/
+output/
 JPK/
-*.xml
+
+# Node
+node_modules/
+
+# Docs
+docs/
+# Generated files
 *.html
+
+# AI snapshot output
+ksef-sync_project_for_ai.txt
+ksef2jpk_project_for_ai.txt
+ksef_send_project_for_ai.txt
 
 # OS
 Thumbs.db
 .DS_Store
 
-*.egg-info/

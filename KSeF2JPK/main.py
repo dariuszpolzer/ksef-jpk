@@ -30,7 +30,7 @@ def load_config(config_path: str) -> dict:
     if not os.path.exists(config_path):
         raise FileNotFoundError(f"Brak pliku konfiguracyjnego: {config_path}")
 
-    with open(config_path, "r", encoding="utf-8") as f:
+    with open(config_path, encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -62,7 +62,7 @@ def resolve_input_source(config: dict):
 
         manifest = None
         if manifest_path.exists():
-            with open(manifest_path, "r", encoding="utf-8") as f:
+            with open(manifest_path, encoding="utf-8") as f:
                 manifest = json.load(f)
 
         return str(input_dir), batch_dir, manifest
@@ -357,10 +357,6 @@ def write_quality_csv(output_path, parsed_records, mapped_rows):
             )
 
     print(f"[OK] Raport jakości CSV: {output_path}")
-
-
-def get_document_dedup_key(faktura):
-    return faktura.nr_ksef or faktura.meta.get("nr_ksef") or faktura.meta.get("numer")
 
 
 # ------------------------------------------------------------

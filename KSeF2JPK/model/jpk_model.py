@@ -2,7 +2,6 @@
 
 from dataclasses import dataclass, field
 from decimal import Decimal
-from typing import Optional
 
 from ksef2jpk.model.deklaracja_model import DeklaracjaVAT7
 
@@ -50,8 +49,8 @@ class JPKModel:
     sprzedaz_wiersz: list = field(default_factory=list)
     zakup_wiersz: list = field(default_factory=list)
 
-    sprzedaz_ctrl: Optional[SprzedazCtrl] = None
-    zakup_ctrl: Optional[ZakupCtrl] = None
+    sprzedaz_ctrl: SprzedazCtrl | None = None
+    zakup_ctrl: ZakupCtrl | None = None
 
 
 class WierszEwidencji:

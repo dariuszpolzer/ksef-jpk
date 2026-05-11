@@ -14,7 +14,7 @@ def load_batch_manifest(batch_dir: Path) -> dict:
     if not manifest_path.exists():
         raise RuntimeError(f"Brak manifest.json w {batch_dir}")
 
-    with open(manifest_path, "r", encoding="utf-8") as f:
+    with open(manifest_path, encoding="utf-8") as f:
         return json.load(f)
 
 
