@@ -73,64 +73,6 @@ def resolve_input_source(config: dict):
     raise RuntimeError("Brak input_dir albo batch_dir w config.json")
 
 
-ARGS = parse_args()
-
-CONFIG_PATH = os.path.abspath(ARGS.config) if ARGS.config else DEFAULT_CONFIG_PATH
-CONFIG = load_config(CONFIG_PATH)
-XSD_PATH = CONFIG["xsd_path"]
-XML_DIR = CONFIG["xml_dir"]
-PODMIOT = CONFIG["podmiot"]
-HTML_DIR = CONFIG.get("html_dir", os.path.join(os.path.dirname(XML_DIR), "html"))
-
-os.makedirs(XML_DIR, exist_ok=True)
-os.makedirs(HTML_DIR, exist_ok=True)
-
-if ARGS.input_dir:
-    CONFIG["input_dir"] = ARGS.input_dir
-    CONFIG["batch_dir"] = None
-
-if ARGS.batch_dir:
-    CONFIG["batch_dir"] = ARGS.batch_dir
-    CONFIG["input_dir"] = None
-
-INPUT_DIR, BATCH_DIR, BATCH_MANIFEST = resolve_input_source(CONFIG)
-
-print("Katalog faktur wejściowych:", INPUT_DIR)
-
-if BATCH_DIR:
-    print("Batch:", BATCH_DIR)
-
-if BATCH_MANIFEST:
-    batch_info = BATCH_MANIFEST.get("batch", {})
-    print("Batch ID:", batch_info.get("batch_id"))
-    print("Faktur w manifeście:", batch_info.get("invoice_count"))
-
-
-now = datetime.now()
-
-JPK_ROK = ARGS.year or CONFIG.get("jpk_rok") or now.year
-JPK_MIESIAC = ARGS.month or CONFIG.get("jpk_miesiac") or now.month
-
-if not 1 <= int(JPK_MIESIAC) <= 12:
-    raise ValueError(f"Nieprawidłowy miesiąc: {JPK_MIESIAC}")
-
-ENABLE_DATE_FILTER = CONFIG.get("enable_date_filter", True)
-
-if ARGS.no_date_filter:
-    ENABLE_DATE_FILTER = False
-
-numer = policz_xml_w_katalogu(XML_DIR) + 1
-
-output_pattern = CONFIG.get("output_file_pattern", "JPK_{podatnik}_{miesiac}_{rok}.xml")
-
-nazwa = CONFIG["podmiot"]["nazwa"]
-podatnik_safe = safe_filename(nazwa).upper()
-
-output_filename = output_pattern.format(rok=JPK_ROK, miesiac=f"{JPK_MIESIAC:02d}", podatnik=podatnik_safe)
-
-OUTPUT_XML = os.path.join(XML_DIR, output_filename)
-
-
 # ------------------------------------------------------------
 # HELPER: WYDRUK SEKCJI
 # ------------------------------------------------------------
@@ -365,27 +307,79 @@ def write_quality_csv(output_path, parsed_records, mapped_rows):
 
 
 def main():
-    parser = KSeFParser(PODMIOT["nip"])
+    args = parse_args()
+
+    config_path = os.path.abspath(args.config) if args.config else DEFAULT_CONFIG_PATH
+    config = load_config(config_path)
+    xsd_path = config["xsd_path"]
+    xml_dir = config["xml_dir"]
+    podmiot = config["podmiot"]
+    html_dir = config.get("html_dir", os.path.join(os.path.dirname(xml_dir), "html"))
+
+    os.makedirs(xml_dir, exist_ok=True)
+    os.makedirs(html_dir, exist_ok=True)
+
+    if args.input_dir:
+        config["input_dir"] = args.input_dir
+        config["batch_dir"] = None
+
+    if args.batch_dir:
+        config["batch_dir"] = args.batch_dir
+        config["input_dir"] = None
+
+    input_dir, batch_dir, batch_manifest = resolve_input_source(config)
+
+    print("Katalog faktur wejściowych:", input_dir)
+
+    if batch_dir:
+        print("Batch:", batch_dir)
+
+    if batch_manifest:
+        batch_info = batch_manifest.get("batch", {})
+        print("Batch ID:", batch_info.get("batch_id"))
+        print("Faktur w manifeście:", batch_info.get("invoice_count"))
+
+    now = datetime.now()
+
+    jpk_rok = args.year or config.get("jpk_rok") or now.year
+    jpk_miesiac = args.month or config.get("jpk_miesiac") or now.month
+
+    if not 1 <= int(jpk_miesiac) <= 12:
+        raise ValueError(f"Nieprawidłowy miesiąc: {jpk_miesiac}")
+
+    enable_date_filter = config.get("enable_date_filter", True)
+
+    if args.no_date_filter:
+        enable_date_filter = False
+
+    numer = policz_xml_w_katalogu(xml_dir) + 1
+
+    output_pattern = config.get("output_file_pattern", "JPK_{podatnik}_{miesiac}_{rok}.xml")
+    podatnik_safe = safe_filename(podmiot["nazwa"]).upper()
+    output_filename = output_pattern.format(rok=jpk_rok, miesiac=f"{jpk_miesiac:02d}", podatnik=podatnik_safe)
+    output_xml = os.path.join(xml_dir, output_filename)
+
+    parser = KSeFParser(podmiot["nip"])
     classifier = JPKFlagsClassifier()
     mapper = JPKMapperPRO()
 
-    all_paths = sorted(glob.glob(os.path.join(INPUT_DIR, "*.xml")))
+    all_paths = sorted(glob.glob(os.path.join(input_dir, "*.xml")))
     paths = [p for p in all_paths if is_candidate_input_xml(p)]
     skipped_non_input = [p for p in all_paths if not is_candidate_input_xml(p)]
 
-    if BATCH_MANIFEST:
-        manifest_count = BATCH_MANIFEST.get("batch", {}).get("invoice_count")
+    if batch_manifest:
+        manifest_count = batch_manifest.get("batch", {}).get("invoice_count")
         if manifest_count is not None and manifest_count != len(paths):
             print(f"⚠️ Różnica manifest/XML: " f"manifest={manifest_count}, XML={len(paths)}")
 
     if not paths:
-        print(f"❌ Nie znaleziono plików XML w katalogu: {INPUT_DIR}")
+        print(f"❌ Nie znaleziono plików XML w katalogu: {input_dir}")
         return
 
     quality_stats = init_quality_stats()
     quality_stats["input_xml_skipped"] = len(skipped_non_input)
 
-    period_start, period_end = get_period_bounds(JPK_ROK, JPK_MIESIAC)
+    period_start, period_end = get_period_bounds(jpk_rok, jpk_miesiac)
 
     # -----------------------------------------------------------------
     # 1. PARSOWANIE + KLASYFIKACJA + OPCJONALNY FILTR DATY
@@ -396,7 +390,7 @@ def main():
     parsed_records = []
     parse_errors = []
     skipped_by_date = []
-    skipped_corrections = []
+    detected_corrections = []
     seen_documents = set()
     for path in paths:
         filename = os.path.basename(path)
@@ -408,10 +402,10 @@ def main():
             update_quality_stats(quality_stats, faktura)
 
             # ---------------------------------------------------------
-            # KOREKTY – tylko sygnał, bez wpuszczania do JPK
+            # KOREKTY – sygnał diagnostyczny; dalej przechodzą przez pipeline.
             # ---------------------------------------------------------
             if faktura.meta.get("is_korekta"):
-                skipped_corrections.append(
+                detected_corrections.append(
                     {
                         "filename": filename,
                         "numer": faktura.meta.get("numer"),
@@ -430,7 +424,7 @@ def main():
                     f"powód={faktura.meta.get('przyczyna_korekty')!r}"
                 )
 
-            if ENABLE_DATE_FILTER:
+            if enable_date_filter:
                 if not invoice_in_period(faktura, period_start, period_end):
                     skip_date = get_filter_date_for_invoice(faktura)
                     skipped_by_date.append((filename, skip_date, faktura.meta.get("typ")))
@@ -477,22 +471,22 @@ def main():
 
     print(f"\nZaładowano poprawnie {len(faktury)} z {len(paths)} faktur wejściowych.")
 
-    if ENABLE_DATE_FILTER:
+    if enable_date_filter:
         print(f"Filtr okresu JPK: WŁĄCZONY " f"({period_start.date()} -> {period_end.date()})")
         print(f"Pominięto po dacie: {len(skipped_by_date)}")
     else:
         print("Filtr okresu JPK: WYŁĄCZONY")
 
-    print(f"Korekty uwzględnione: {len(skipped_corrections)}")
+    print(f"Wykryte korekty: {len(detected_corrections)}")
 
     if parse_errors:
         print_section("BŁĘDY PARSOWANIA")
         for filename, err in parse_errors:
             print(f"• {filename}: {err}")
 
-    if skipped_corrections:
-        print_section("POMINIĘTE KOREKTY")
-        for item in skipped_corrections:
+    if detected_corrections:
+        print_section("WYKRYTE KOREKTY")
+        for item in detected_corrections:
             print(
                 f"• {item['filename']} | "
                 f"numer={item['numer']!r} | "
@@ -550,7 +544,7 @@ def main():
         for doc, err in map_errors:
             print(f"• {doc}: {err}")
 
-    quality_csv_path = Path.home() / "Documents" / "JPK" / "REPORTS" / f"quality_report_{JPK_MIESIAC:02d}_{JPK_ROK}.csv"
+    quality_csv_path = Path.home() / "Documents" / "JPK" / "REPORTS" / f"quality_report_{jpk_miesiac:02d}_{jpk_rok}.csv"
 
     write_quality_csv(
         quality_csv_path,
@@ -584,7 +578,7 @@ def main():
     # -----------------------------------------------------------------
     print_section("4. BUDOWA JPK")
 
-    builder = JPKBuilderPROPlus(rok=JPK_ROK, miesiac=JPK_MIESIAC, podmiot=PODMIOT)
+    builder = JPKBuilderPROPlus(rok=jpk_rok, miesiac=jpk_miesiac, podmiot=podmiot)
 
     try:
         jpk_dict = builder.build(sprzedaz_we, zakupy_we)
@@ -602,8 +596,8 @@ def main():
     try:
         jpk_model = dict_to_jpk_model(jpk_dict)
         generator = JPKGeneratorPRO()
-        generator.generate(jpk_model, OUTPUT_XML)
-        print(f"[OK] Wygenerowano: {OUTPUT_XML}")
+        generator.generate(jpk_model, output_xml)
+        print(f"[OK] Wygenerowano: {output_xml}")
     except Exception as e:
         print(f"❌ Błąd podczas generowania XML: {e}")
         traceback.print_exc()
@@ -615,7 +609,7 @@ def main():
     print_section("6. WALIDACJA XSD")
 
     try:
-        validate_jpk(OUTPUT_XML, XSD_PATH)
+        validate_jpk(output_xml, xsd_path)
     except Exception as e:
         print(f"❌ Błąd podczas walidacji JPK: {e}")
         traceback.print_exc()
@@ -623,7 +617,7 @@ def main():
     # -----------------------------------------------------------------
     # 7. KONWERSJA DO HTML
     # -----------------------------------------------------------------
-    converter = JPK2HTML(OUTPUT_XML, HTML_DIR)
+    converter = JPK2HTML(output_xml, html_dir)
     html_file = converter.convert()
 
     # -----------------------------------------------------------------
@@ -632,14 +626,14 @@ def main():
     print_section("8. PODSUMOWANIE")
 
     print(f"Plik XML w katalogu:            {numer}")
-    print(f"Miesiąc:                        {JPK_MIESIAC}")
-    print(f"Rok:                            {JPK_ROK}")
+    print(f"Miesiąc:                        {jpk_miesiac}")
+    print(f"Rok:                            {jpk_rok}")
 
-    if BATCH_DIR:
-        print(f"Batch źródłowy:                 {BATCH_DIR}")
+    if batch_dir:
+        print(f"Batch źródłowy:                 {batch_dir}")
 
-    if BATCH_MANIFEST:
-        batch_info = BATCH_MANIFEST.get("batch", {})
+    if batch_manifest:
+        batch_info = batch_manifest.get("batch", {})
         print(f"Batch ID:                       {batch_info.get('batch_id')}")
         print(f"Faktur wg manifestu:            {batch_info.get('invoice_count')}")
 
@@ -653,10 +647,10 @@ def main():
     print(f"Wiersze sprzedaży:              {len(sprzedaz_we)}")
     print(f"Wiersze zakupu:                 {len(zakupy_we)}")
 
-    if ENABLE_DATE_FILTER:
+    if enable_date_filter:
         print(f"Pominięte po dacie:             {len(skipped_by_date)}")
 
-    print(f"Pominięte korekty:              {len(skipped_corrections)}")
+    print(f"Wykryte korekty:                {len(detected_corrections)}")
     print(f"XML-e pominięte jako nie-wejściowe: {quality_stats['input_xml_skipped']}")
 
     print("")
@@ -673,7 +667,7 @@ def main():
     print(f"Pominięte duplikaty:            {quality_stats['duplicates_skipped']}")
 
     print("")
-    print(f"Plik wynikowy:                  {OUTPUT_XML}")
+    print(f"Plik wynikowy:                  {output_xml}")
     print(f"Podgląd HTML zapisany jako:     {html_file}")
 
 

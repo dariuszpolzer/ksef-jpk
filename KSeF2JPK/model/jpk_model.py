@@ -67,6 +67,7 @@ class WierszEwidencji:
         data_wystawienia,
         data_sprzedazy,
         data_wplywu=None,
+        kontrahent_kraj="PL",
         gtu=None,
         procedury=None,
         is_korekta=False,
@@ -81,6 +82,7 @@ class WierszEwidencji:
         self.stawka = stawka
         self.kontrahent_nip = kontrahent_nip
         self.kontrahent_nazwa = kontrahent_nazwa
+        self.kontrahent_kraj = kontrahent_kraj or "PL"
         self.nr_ksef = nr_ksef
         self.dokument = dokument
         self.data_wystawienia = data_wystawienia

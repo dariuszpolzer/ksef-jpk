@@ -238,7 +238,9 @@ class JPKGeneratorPRO:
                 sw = ET.SubElement(ewid, f"{{{ns_jpk}}}SprzedazWiersz")
 
                 ET.SubElement(sw, f"{{{ns_jpk}}}LpSprzedazy").text = str(w.LpSprzedazy)
-                ET.SubElement(sw, f"{{{ns_jpk}}}KodKrajuNadaniaTIN").text = "PL"
+                ET.SubElement(sw, f"{{{ns_jpk}}}KodKrajuNadaniaTIN").text = (
+                    getattr(w, "KodKrajuNadaniaTIN", "PL") or "PL"
+                )
                 ET.SubElement(sw, f"{{{ns_jpk}}}NrKontrahenta").text = w.NrKontrahenta
                 ET.SubElement(sw, f"{{{ns_jpk}}}NazwaKontrahenta").text = w.NazwaKontrahenta
                 ET.SubElement(sw, f"{{{ns_jpk}}}DowodSprzedazy").text = w.DowodSprzedazy
@@ -307,7 +309,9 @@ class JPKGeneratorPRO:
                 zw = ET.SubElement(ewid, f"{{{ns_jpk}}}ZakupWiersz")
 
                 ET.SubElement(zw, f"{{{ns_jpk}}}LpZakupu").text = str(w.LpZakupu)
-                ET.SubElement(zw, f"{{{ns_jpk}}}KodKrajuNadaniaTIN").text = "PL"
+                ET.SubElement(zw, f"{{{ns_jpk}}}KodKrajuNadaniaTIN").text = (
+                    getattr(w, "KodKrajuNadaniaTIN", "PL") or "PL"
+                )
                 ET.SubElement(zw, f"{{{ns_jpk}}}NrDostawcy").text = w.NrDostawcy
                 ET.SubElement(zw, f"{{{ns_jpk}}}NazwaDostawcy").text = w.NazwaDostawcy
                 ET.SubElement(zw, f"{{{ns_jpk}}}DowodZakupu").text = w.DowodZakupu

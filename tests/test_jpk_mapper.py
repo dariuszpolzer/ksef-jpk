@@ -106,3 +106,36 @@ def test_mapper_uses_manual_procedure_override():
 
     assert len(rows) == 1
     assert rows[0].procedury == ["TP"]
+
+
+def test_mapper_preserves_counterparty_country():
+    kontrahent = Kontrahent(nip="DE123456789", nazwa="EU Buyer", kraj="DE")
+
+    faktura = FakturaModel(
+        nr_ksef="6791444505-20260401-755BEE800001-B8",
+        meta={
+            "typ": "sprzedaz",
+            "numer": "FV/WDT/1",
+            "nip_nabywcy": "DE123456789",
+            "nazwa_nabywcy": "EU Buyer",
+            "kraj_nabywcy": "DE",
+            "data_wystawienia": "2026-04-01",
+            "data_sprzedazy": "2026-04-01",
+        },
+        pozycje=[
+            Pozycja(
+                nazwa="Towar WDT",
+                netto=1000,
+                vat=0,
+                typ="sprzedaz",
+                kontrahent=kontrahent,
+                stawka=0,
+                procedury=["WDT"],
+            )
+        ],
+    )
+
+    rows = JPKMapperPRO().map(faktura)
+
+    assert len(rows) == 1
+    assert rows[0].kontrahent_kraj == "DE"

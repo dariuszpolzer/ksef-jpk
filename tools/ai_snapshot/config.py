@@ -925,7 +925,6 @@ CRITICAL_BUSINESS_RULES = """# CRITICAL BUSINESS RULES
 """
 
 
-
 ALWAYS_IGNORE_DIRS = {
     ".git",
     ".idea",
@@ -992,6 +991,7 @@ TEXT_EXTENSIONS = {
     ".bat",
     ".ps1",
     ".dockerfile",
+    ".lock",
 }
 
 
@@ -1009,9 +1009,8 @@ TEXT_FILENAMES = {
 
 PRIORITY_FILES = [
     "pyproject.toml",
-    "requirements.txt",
+    "uv.lock",
     "README.md",
-    "pytest.ini",
     ".gitignore",
     ".gitattributes",
     "check.ps1",

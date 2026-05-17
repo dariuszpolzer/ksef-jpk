@@ -217,6 +217,7 @@ class JPKBuilderPROPlus:
 
             row = {
                 "LpSprzedazy": lp,
+                "KodKrajuNadaniaTIN": w.kontrahent_kraj or "PL",
                 "NrKontrahenta": w.kontrahent_nip,
                 "NazwaKontrahenta": w.kontrahent_nazwa,
                 "DowodSprzedazy": w.dokument,
@@ -272,6 +273,7 @@ class JPKBuilderPROPlus:
 
             row = {
                 "LpZakupu": lp,
+                "KodKrajuNadaniaTIN": w.kontrahent_kraj or "PL",
                 "NrDostawcy": w.kontrahent_nip,
                 "NazwaDostawcy": w.kontrahent_nazwa,
                 "DowodZakupu": w.dokument,

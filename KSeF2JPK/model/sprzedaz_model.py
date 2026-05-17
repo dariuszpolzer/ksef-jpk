@@ -6,6 +6,7 @@ class SprzedazWiersz:
     LpSprzedazy: int
     NrKontrahenta: str
     NazwaKontrahenta: str
+    KodKrajuNadaniaTIN: str
     DowodSprzedazy: str
     DataWystawienia: str
     DataSprzedazy: str

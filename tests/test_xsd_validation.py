@@ -154,6 +154,7 @@ def test_generated_jpk_with_wdt_passes_xsd_validation(tmp_path):
             dokument="WDT/1/2026",
             data_wystawienia="2026-04-01",
             data_sprzedazy="2026-04-01",
+            kontrahent_kraj="DE",
             netto=10000,
             vat=0,
             stawka=0,
@@ -181,6 +182,7 @@ def test_generated_jpk_with_wdt_passes_xsd_validation(tmp_path):
 
     row = jpk_dict["Ewidencja"]["SprzedazWiersz"][0]
     assert row["WDT"] == "1"
+    assert row["KodKrajuNadaniaTIN"] == "DE"
 
     jpk_model = dict_to_jpk_model(jpk_dict)
 
@@ -188,6 +190,9 @@ def test_generated_jpk_with_wdt_passes_xsd_validation(tmp_path):
 
     generator = JPKGeneratorPRO()
     generator.generate(jpk_model, str(output_xml))
+
+    xml_out = output_xml.read_text(encoding="utf-8")
+    assert "<KodKrajuNadaniaTIN>DE</KodKrajuNadaniaTIN>" in xml_out
 
     assert validate_jpk(str(output_xml), str(xsd_path)) is True
 

@@ -6,6 +6,7 @@ class ZakupWiersz:
     LpZakupu: int
     NrDostawcy: str
     NazwaDostawcy: str
+    KodKrajuNadaniaTIN: str
     DowodZakupu: str
     DataZakupu: str
     DataWplywu: str

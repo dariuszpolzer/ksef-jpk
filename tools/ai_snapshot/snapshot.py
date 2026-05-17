@@ -372,7 +372,7 @@ def render_secret_warnings(secret_warnings: dict[Path, list[str]]) -> str:
 def render_tooling_context(root: Path) -> str:
     lines = ["# BUILD / TOOLING CONTEXT", ""]
 
-    for filename in ["pyproject.toml", "requirements.txt", "pytest.ini", ".bandit", "check.ps1", "fix.ps1"]:
+    for filename in ["pyproject.toml", "uv.lock", ".bandit", "check.ps1", "fix.ps1"]:
         path = root / filename
         if path.exists() and path.is_file():
             try:

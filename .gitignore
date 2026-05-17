@@ -8,6 +8,7 @@ htmlcov/
 
 # Virtual environment
 venv/
+.venv/
 .env
 
 # Build

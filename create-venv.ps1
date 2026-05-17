@@ -1,60 +1,32 @@
 param(
-    [switch]$Force,
-    [switch]$Rebuild,
-    [string]$PythonPath = "python"
+    [switch]$Rebuild
 )
 
-Write-Host "=== Python venv manager ===" -ForegroundColor Cyan
+$ErrorActionPreference = "Stop"
+
+Write-Host "=== UV environment setup ===" -ForegroundColor Cyan
 
 $project = Get-Location
-$venvPath = Join-Path $project "venv"
-$activatePath = Join-Path $venvPath "Scripts\activate"
+$venvPath = Join-Path $project ".venv"
 
 Write-Host "Project directory: $project"
 
-# 1. Rebuild: remove venv completely
-if ($Rebuild) {
-    if (Test-Path $venvPath) {
-        Write-Host "Rebuild requested. Removing existing venv..." -ForegroundColor Yellow
-        Remove-Item -Recurse -Force $venvPath
-    }
-}
-
-# 2. Create venv if missing or forced
-if (-not (Test-Path $venvPath) -or $Force) {
-    if ($Force -and (Test-Path $venvPath)) {
-        Write-Host "Force enabled. Removing existing venv..." -ForegroundColor Yellow
-        Remove-Item -Recurse -Force $venvPath
-    }
-
-    Write-Host "Creating venv using: $PythonPath" -ForegroundColor Green
-    & $PythonPath -m venv venv
-
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "ERROR: Failed to create venv. Check PythonPath." -ForegroundColor Red
-        exit 1
-    }
-} else {
-    Write-Host "venv already exists. Use -Force or -Rebuild to recreate." -ForegroundColor Yellow
-}
-
-# 3. Activate venv
-if (Test-Path $activatePath) {
-    Write-Host "Activating venv..." -ForegroundColor Green
-    & $activatePath
-} else {
-    Write-Host "ERROR: Activation script not found." -ForegroundColor Red
+if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
+    Write-Host "Nie znaleziono uv. Zainstaluj uv: https://docs.astral.sh/uv/" -ForegroundColor Red
     exit 1
 }
 
-# 4. Create requirements.txt if missing
-$reqFile = Join-Path $project "requirements.txt"
-
-if (-not (Test-Path $reqFile)) {
-    Write-Host "Generating requirements.txt..." -ForegroundColor Green
-    pip freeze > $reqFile
-} else {
-    Write-Host "requirements.txt already exists." -ForegroundColor Yellow
+if ($Rebuild -and (Test-Path $venvPath)) {
+    Write-Host "Rebuild requested. Removing existing .venv..." -ForegroundColor Yellow
+    Remove-Item -Recurse -Force $venvPath
 }
 
-Write-Host "Done. venv is active." -ForegroundColor Cyan
+Write-Host "Synchronizuję .venv z pyproject.toml i uv.lock..." -ForegroundColor Green
+uv sync --extra dev
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "UV sync failed." -ForegroundColor Red
+    exit $LASTEXITCODE
+}
+
+Write-Host "Done. Użyj: uv run python -m ksef2jpk.main --year 2026 --month 5" -ForegroundColor Cyan

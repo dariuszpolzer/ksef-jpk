@@ -30,13 +30,13 @@ def validate_jpk(xml_path: str, xsd_path: str):
     xsd_dir = xsd_file.parent
 
     try:
-        parser = etree.XMLParser(resolve_entities=False, no_network=False)
+        parser = etree.XMLParser(resolve_entities=False, no_network=True)
         parser.resolvers.add(LocalResolver(xsd_dir))
 
         schema_doc = etree.parse(str(xsd_file), parser)
         schema = etree.XMLSchema(schema_doc)
 
-        xml_doc = etree.parse(str(Path(xml_path).resolve()))
+        xml_doc = etree.parse(str(Path(xml_path).resolve()), parser)
         schema.assertValid(xml_doc)
 
         print("✔ JPK jest poprawny zgodnie z XSD MF")

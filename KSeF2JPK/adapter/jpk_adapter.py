@@ -97,6 +97,7 @@ def dict_to_jpk_model(jpk_dict: dict) -> JPKModel:
     for w in e.get("SprzedazWiersz", []):
         sw = SprzedazWiersz(
             LpSprzedazy=w["LpSprzedazy"],
+            KodKrajuNadaniaTIN=w.get("KodKrajuNadaniaTIN", "PL"),
             NrKontrahenta=w["NrKontrahenta"],
             NazwaKontrahenta=w["NazwaKontrahenta"],
             DowodSprzedazy=w["DowodSprzedazy"],
@@ -124,6 +125,7 @@ def dict_to_jpk_model(jpk_dict: dict) -> JPKModel:
     for w in e.get("ZakupWiersz", []):
         zw = ZakupWiersz(
             LpZakupu=w["LpZakupu"],
+            KodKrajuNadaniaTIN=w.get("KodKrajuNadaniaTIN", "PL"),
             NrDostawcy=w["NrDostawcy"],
             NazwaDostawcy=w["NazwaDostawcy"],
             DowodZakupu=w["DowodZakupu"],

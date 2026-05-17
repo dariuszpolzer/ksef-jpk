@@ -23,9 +23,11 @@ class JPKMapperPRO:
         if typ == "sprzedaz":
             nip_kontrahenta = (faktura.meta.get("nip_nabywcy") or "").strip()
             nazwa_kontrahenta = (faktura.meta.get("nazwa_nabywcy") or "").strip()
+            kraj_kontrahenta = (faktura.meta.get("kraj_nabywcy") or "").strip()
         else:
             nip_kontrahenta = (faktura.meta.get("nip_sprzedawcy") or "").strip()
             nazwa_kontrahenta = (faktura.meta.get("nazwa_sprzedawcy") or "").strip()
+            kraj_kontrahenta = (faktura.meta.get("kraj_sprzedawcy") or "").strip()
 
         nr_ksef = faktura.nr_ksef or faktura.meta.get("nr_ksef", "")
         dokument = faktura.meta.get("numer") or nr_ksef or "BRAK"
@@ -81,6 +83,7 @@ class JPKMapperPRO:
                     stawka=stawka,
                     kontrahent_nip=nip_kontrahenta,
                     kontrahent_nazwa=nazwa_kontrahenta,
+                    kontrahent_kraj=kraj_kontrahenta or "PL",
                     nr_ksef=nr_ksef,
                     dokument=dokument,
                     data_wystawienia=data_wystawienia,

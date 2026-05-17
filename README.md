@@ -42,10 +42,8 @@ Projekt analizuje dane z faktur KSeF, mapuje je do ewidencji VAT, wykonuje walid
 ```bash
 git clone ...
 cd ...
-python -m venv venv
-.\venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-python -m ksef2jpk.main --year 2026 --month 5
+uv sync --extra dev
+uv run python -m ksef2jpk.main --year 2026 --month 5
 ```
 
 ---
@@ -331,10 +329,7 @@ Aktualne ograniczenia projektu:
 ## Wymagania
 
 - Python 3.11+
-- pytest
-- ruff
-- black
-- bandit
+- uv
 
 ---
 
@@ -347,29 +342,17 @@ cd ksef2jpk
 ```
 ## Środowisko Python
 
-Utworzenie i aktywacja virtual environment:
-```bash
-python -m venv venv
-.\venv\Scripts\Activate.ps1
-```
-Aktualizacja pip i instalacja zależności:
+Projekt używa `uv`. Źródłem prawdy dla zależności jest `pyproject.toml`, a zablokowane wersje są w `uv.lock`.
 
 ```bash
-python -m pip install --upgrade pip
-pip install -r requirements.txt
-```
-
-Instalacja narzędzi developerskich:
-
-```bash
-pip install -e ".[dev]"
+uv sync --extra dev
 ```
 ---
 
 # Przykładowe uruchomienie
 
 ```powershell
-python -m ksef2jpk.main --year 2026 --month 5
+uv run python -m ksef2jpk.main --year 2026 --month 5
 ```
 
 Przykładowy wynik:
@@ -424,7 +407,7 @@ stawka=23.0
 ## Testy
 
 ```bash
-pytest
+uv run pytest
 ```
 
 ---
@@ -432,8 +415,8 @@ pytest
 ## Formatowanie kodu
 
 ```bash
-black .
-ruff check .
+uv run black .
+uv run ruff check .
 ```
 
 ---
@@ -441,7 +424,7 @@ ruff check .
 ## Security scan
 
 ```bash
-bandit -r ksef2jpk
+uv run bandit -r ksef2jpk
 ```
 
 ---

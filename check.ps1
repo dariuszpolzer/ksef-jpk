@@ -7,6 +7,11 @@ $ErrorActionPreference = "Stop"
 $src = "ksef2jpk"
 $tests = "tests"
 
+if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
+    Write-Host "Nie znaleziono uv. Zainstaluj uv i uruchom: uv sync --extra dev" -ForegroundColor Red
+    exit 1
+}
+
 if (-not (Test-Path $src)) {
     Write-Host "Źródło nie istnieje: $src" -ForegroundColor Red
     exit 1
@@ -17,29 +22,36 @@ if (-not (Test-Path $tests)) {
     exit 1
 }
 
+Write-Host "=== UV SYNC ===" -ForegroundColor Cyan
+uv sync --extra dev
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "`nUV SYNC FAILED ❌" -ForegroundColor Red
+    exit $LASTEXITCODE
+}
+
 Write-Host "=== PYTEST ===" -ForegroundColor Cyan
-python -m pytest -v
+uv run pytest -v
 if ($LASTEXITCODE -ne 0) {
     Write-Host "`nPYTEST FAILED ❌" -ForegroundColor Red
     exit $LASTEXITCODE
 }
 
 Write-Host "`n=== RUFF ===" -ForegroundColor Cyan
-python -m ruff check $src $tests
+uv run ruff check $src $tests
 if ($LASTEXITCODE -ne 0) {
     Write-Host "`nRUFF FAILED ❌" -ForegroundColor Red
     exit $LASTEXITCODE
 }
 
 Write-Host "`n=== BLACK (check) ===" -ForegroundColor Cyan
-python -m black --check $src $tests
+uv run black --check $src $tests
 if ($LASTEXITCODE -ne 0) {
     Write-Host "`nBLACK FAILED ❌" -ForegroundColor Red
     exit $LASTEXITCODE
 }
 
 Write-Host "`n=== BANDIT ===" -ForegroundColor Cyan
-python -m bandit -r $src
+uv run bandit -r $src
 if ($LASTEXITCODE -ne 0) {
     Write-Host "`nBANDIT FAILED ❌" -ForegroundColor Red
     exit $LASTEXITCODE
