@@ -472,6 +472,17 @@ Projekt może być wykorzystywany do:
 ---
 ## CI/CD
 
+Kontrole jakości można uruchomić lokalnie:
+
+```powershell
+.\check.ps1
+```
+
+Przed pushem sprawdź:
+- `.\check.ps1` kończy się statusem OK,
+- `git status` nie pokazuje danych wygenerowanych lub lokalnych,
+- w repo nie ma plików z danymi wrażliwymi ani eksportów roboczych.
+
 Projekt wykorzystuje GitHub Actions do:
 - uruchamiania testów,
 - lintingu,
