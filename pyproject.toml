@@ -42,8 +42,6 @@ packages = [
     "ksef2jpk.parser",
     "ksef2jpk.utils",
     "ksef2jpk.validator",
-    "tools",
-    "tools.ai_snapshot",
 ]
 
 [tool.black]
@@ -100,7 +98,6 @@ exclude_dirs = [
     "tests",
     ".venv",
     "venv",
-    "tools",
     "__pycache__",
     "validator/xsd",
 ]

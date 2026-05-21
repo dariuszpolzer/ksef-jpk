@@ -134,7 +134,6 @@ ksef2jpk/
 ├── validator/      # walidacja XSD i QA
 │
 ├── tests/          # testy
-├── tools/          # narzędzia developerskie
 └── output/         # wygenerowane raporty/JPK
 ```
 
