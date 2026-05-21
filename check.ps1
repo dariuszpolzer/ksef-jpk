@@ -1,64 +1,51 @@
-# ============================================
-# CHECK.PS1 — testy + lint + format + security
-# ============================================
+# ksef-jpk local quality check
 
 $ErrorActionPreference = "Stop"
 
-$src = "ksef2jpk"
-$tests = "tests"
+chcp 65001 | Out-Null
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
+$env:PYTHONIOENCODING = "utf-8"
+
+if (-not (Test-Path ".git")) {
+    Write-Host "ERROR: Uruchom check.ps1 z katalogu głównego repozytorium." -ForegroundColor Red
+    exit 1
+}
 
 if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
-    Write-Host "Nie znaleziono uv. Zainstaluj uv i uruchom: uv sync --extra dev" -ForegroundColor Red
+    Write-Host "ERROR: Nie znaleziono uv w PATH." -ForegroundColor Red
     exit 1
 }
 
-if (-not (Test-Path $src)) {
-    Write-Host "Źródło nie istnieje: $src" -ForegroundColor Red
-    exit 1
+function Run-Step {
+    param(
+        [string]$Name,
+        [string[]]$Command
+    )
+
+    Write-Host ""
+    Write-Host ("=== {0} ===" -f $Name) -ForegroundColor Cyan
+    Write-Host ($Command -join " ")
+
+    & $Command[0] $Command[1..($Command.Count - 1)]
+
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host ""
+        Write-Host ("FAILED: {0} (exit code {1})" -f $Name, $LASTEXITCODE) -ForegroundColor Red
+        exit $LASTEXITCODE
+    }
 }
 
-if (-not (Test-Path $tests)) {
-    Write-Host "Katalog testów nie istnieje: $tests" -ForegroundColor Red
-    exit 1
-}
+Write-Host ""
+Write-Host "=== KSEF-JPK CHECK ===" -ForegroundColor Cyan
 
-Write-Host "=== UV SYNC ===" -ForegroundColor Cyan
-uv sync --extra dev
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "`nUV SYNC FAILED ❌" -ForegroundColor Red
-    exit $LASTEXITCODE
-}
+Run-Step "Python" @("uv", "run", "python", "--version")
+Run-Step "Sync dependencies" @("uv", "sync", "--extra", "dev")
+Run-Step "Tests" @("uv", "run", "python", "-m", "pytest")
+Run-Step "Ruff" @("uv", "run", "python", "-m", "ruff", "check", ".")
+Run-Step "Black" @("uv", "run", "python", "-m", "black", "--check", "ksef2jpk", "tools", "tests")
+Run-Step "Bandit" @("uv", "run", "python", "-m", "bandit", "-q", "-c", "pyproject.toml", "-r", ".")
 
-Write-Host "=== PYTEST ===" -ForegroundColor Cyan
-uv run pytest -v
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "`nPYTEST FAILED ❌" -ForegroundColor Red
-    exit $LASTEXITCODE
-}
-
-Write-Host "`n=== RUFF ===" -ForegroundColor Cyan
-uv run ruff check $src $tests
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "`nRUFF FAILED ❌" -ForegroundColor Red
-    exit $LASTEXITCODE
-}
-
-Write-Host "`n=== BLACK (check) ===" -ForegroundColor Cyan
-uv run black --check $src $tests
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "`nBLACK FAILED ❌" -ForegroundColor Red
-    exit $LASTEXITCODE
-}
-
-Write-Host "`n=== BANDIT ===" -ForegroundColor Cyan
-uv run bandit -r $src
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "`nBANDIT FAILED ❌" -ForegroundColor Red
-    exit $LASTEXITCODE
-}
-
-Write-Host "`n============================================" -ForegroundColor Green
-Write-Host "Wszystkie testy zakończone sukcesem ✔️" -ForegroundColor Green
-Write-Host "============================================" -ForegroundColor Green
-
+Write-Host ""
+Write-Host "OK: wszystkie kontrole przeszły." -ForegroundColor Green
 exit 0

@@ -370,10 +370,10 @@ def main():
     if batch_manifest:
         manifest_count = batch_manifest.get("batch", {}).get("invoice_count")
         if manifest_count is not None and manifest_count != len(paths):
-            print(f"⚠️ Różnica manifest/XML: " f"manifest={manifest_count}, XML={len(paths)}")
+            print(f"[WARN] Różnica manifest/XML: " f"manifest={manifest_count}, XML={len(paths)}")
 
     if not paths:
-        print(f"❌ Nie znaleziono plików XML w katalogu: {input_dir}")
+        print(f"[ERROR] Nie znaleziono plików XML w katalogu: {input_dir}")
         return
 
     quality_stats = init_quality_stats()
@@ -482,13 +482,13 @@ def main():
     if parse_errors:
         print_section("BŁĘDY PARSOWANIA")
         for filename, err in parse_errors:
-            print(f"• {filename}: {err}")
+            print(f"- {filename}: {err}")
 
     if detected_corrections:
         print_section("WYKRYTE KOREKTY")
         for item in detected_corrections:
             print(
-                f"• {item['filename']} | "
+                f"- {item['filename']} | "
                 f"numer={item['numer']!r} | "
                 f"rodzaj={item['rodzaj_faktury']!r} | "
                 f"korygowana={item['nr_fa_korygowanej']!r} | "
@@ -497,7 +497,7 @@ def main():
             )
 
     if not faktury:
-        print("\n❌ Brak poprawnie sparsowanych faktur po filtracji. Kończę.")
+        print("\n[ERROR] Brak poprawnie sparsowanych faktur po filtracji. Kończę.")
         return
     # policz faktury wg typu
     faktury_sprzedaz = [f for f in faktury if f.meta.get("typ") == "sprzedaz"]
@@ -542,7 +542,7 @@ def main():
     if map_errors:
         print_section("BŁĘDY MAPOWANIA")
         for doc, err in map_errors:
-            print(f"• {doc}: {err}")
+            print(f"- {doc}: {err}")
 
     quality_csv_path = Path.home() / "Documents" / "JPK" / "REPORTS" / f"quality_report_{jpk_miesiac:02d}_{jpk_rok}.csv"
 
@@ -553,7 +553,7 @@ def main():
     )
 
     if not wiersze:
-        print("\n❌ Brak poprawnie zmapowanych wierszy. Kończę.")
+        print("\n[ERROR] Brak poprawnie zmapowanych wierszy. Kończę.")
         return
     # -----------------------------------------------------------------
     # 3. PODZIAŁ NA SPRZEDAŻ / ZAKUP
@@ -569,9 +569,9 @@ def main():
     print(f"Inne:     {len(inne_we)}")
 
     if inne_we:
-        print("\n⚠️ Wykryto wiersze z nieobsługiwanym typem:")
+        print("\n[WARN] Wykryto wiersze z nieobsługiwanym typem:")
         for w in inne_we:
-            print(f"• dokument={w.dokument!r}, typ={w.typ!r}, " f"nip={w.kontrahent_nip!r}, nr_ksef={w.nr_ksef!r}")
+            print(f"- dokument={w.dokument!r}, typ={w.typ!r}, " f"nip={w.kontrahent_nip!r}, nr_ksef={w.nr_ksef!r}")
 
     # -----------------------------------------------------------------
     # 4. BUDOWA JPK
@@ -584,7 +584,7 @@ def main():
         jpk_dict = builder.build(sprzedaz_we, zakupy_we)
         print("[OK] Zbudowano strukturę JPK.")
     except Exception as e:
-        print(f"❌ Błąd podczas budowy JPK: {e}")
+        print(f"[ERROR] Błąd podczas budowy JPK: {e}")
         traceback.print_exc()
         return
 
@@ -599,7 +599,7 @@ def main():
         generator.generate(jpk_model, output_xml)
         print(f"[OK] Wygenerowano: {output_xml}")
     except Exception as e:
-        print(f"❌ Błąd podczas generowania XML: {e}")
+        print(f"[ERROR] Błąd podczas generowania XML: {e}")
         traceback.print_exc()
         return
 
@@ -611,7 +611,7 @@ def main():
     try:
         validate_jpk(output_xml, xsd_path)
     except Exception as e:
-        print(f"❌ Błąd podczas walidacji JPK: {e}")
+        print(f"[ERROR] Błąd podczas walidacji JPK: {e}")
         traceback.print_exc()
 
     # -----------------------------------------------------------------

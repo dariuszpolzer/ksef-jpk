@@ -39,23 +39,23 @@ def validate_jpk(xml_path: str, xsd_path: str):
         xml_doc = etree.parse(str(Path(xml_path).resolve()), parser)
         schema.assertValid(xml_doc)
 
-        print("✔ JPK jest poprawny zgodnie z XSD MF")
+        print("[OK] JPK jest poprawny zgodnie z XSD MF")
         return True
 
     except etree.XMLSchemaParseError as e:
-        print("❌ Błąd parsowania XSD:")
+        print("[ERROR] Błąd parsowania XSD:")
         for error in e.error_log:
-            print(f"  • Linia {error.line}: {error.message}")
+            print(f"  - Linia {error.line}: {error.message}")
         return False
 
     except etree.DocumentInvalid as e:
-        print("❌ BŁĘDY WALIDACJI JPK:")
+        print("[ERROR] BŁĘDY WALIDACJI JPK:")
         for error in e.error_log:
-            print(f"  • Linia {error.line}: {error.message}")
+            print(f"  - Linia {error.line}: {error.message}")
         return False
 
     except Exception as e:
-        print("❌ Błąd walidacji JPK:", e)
+        print("[ERROR] Błąd walidacji JPK:", e)
         return False
 
 
