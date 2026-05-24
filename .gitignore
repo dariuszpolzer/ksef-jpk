@@ -57,3 +57,9 @@
 
 config.json
 !config.example.json
+
+# Local/generated
+docs/
+*.egg-info/
+__pycache__/
+
