@@ -54,3 +54,6 @@
   Thumbs.db
   .DS_Store
 
+
+config.json
+!config.example.json
