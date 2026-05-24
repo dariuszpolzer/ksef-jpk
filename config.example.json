@@ -1,0 +1,19 @@
+  {
+    "batch_dir": "C:\\Users\\USER\\Documents\\ksef-sync\\data\\batches",
+    "input_dir": "C:\\Users\\USER\\Documents\\ksef-jpk\\test_data",
+    "xsd_path": "C:\\Users\\USER\\Documents\\ksef-jpk\\validator\\JPK_V7M_3.xsd",
+    "xml_dir": "C:\\Users\\USER\\Documents\\JPK\\XML",
+    "html_dir": "C:\\Users\\USER\\Documents\\JPK\\HTML",
+    "jpk_rok": null,
+    "jpk_miesiac": null,
+    "enable_date_filter": true,
+    "output_file_pattern": "JPK_{podatnik}_{miesiac}_{rok}.xml",
+    "podmiot": {
+      "nip": "0000000000",
+      "nazwa": "NAZWA PODATNIKA",
+      "kod_urzedu": "0000",
+      "email": "email@example.com",
+      "telefon": "000000000",
+      "data_urodzenia": "1900-01-01"
+    }
+  }

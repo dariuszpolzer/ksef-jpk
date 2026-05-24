@@ -1,56 +1,56 @@
 # Python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.coverage
-htmlcov/
+  __pycache__/
+  *.pyc
+  *.pyo
+  *.pyd
+  .coverage
+  htmlcov/
 
-# Virtual environment
-venv/
-.venv/
-.env
+  # Virtual environment
+  venv/
+  .venv/
+  .env
 
-# Build
-build/
-dist/
-*.egg-info/
+  # Local private config
+  config.json
+  !config.example.json
 
-# Pytest / tooling
-.pytest_cache/
-.ruff_cache/
-.mypy_cache/
+  # Build
+  build/
+  dist/
+  *.egg-info/
 
-# IDE
-.vscode/
-.idea/
+  # Pytest / tooling
+  .pytest_cache/
+  .ruff_cache/
+  .mypy_cache/
 
-# Logs
-logs/
+  # IDE
+  .vscode/
+  .idea/
 
-# Project generated data
-data/
-keys/
-auth/
-batches/
-exports/
-output/
-JPK/
+  # Logs
+  logs/
 
-# Node
-node_modules/
+  # Project generated data
+  data/
+  keys/
+  auth/
+  batches/
+  exports/
+  output/
+  JPK/
 
-# Docs
-docs/
-# Generated files
-*.html
+  # Node
+  node_modules/
 
-# AI snapshot output
-ksef-sync_project_for_ai.txt
-ksef2jpk_project_for_ai.txt
-ksef_send_project_for_ai.txt
+  # Docs
+  docs/
 
-# OS
-Thumbs.db
-.DS_Store
+  # Generated files
+  *.html
+
+  # OS
+  Thumbs.db
+  .DS_Store
 
