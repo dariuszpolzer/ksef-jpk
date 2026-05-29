@@ -1,5 +1,5 @@
   {
-    "batch_dir": "C:\\Users\\USER\\Documents\\ksef-sync\\data\\batches",
+    "batch_dir": null,
     "input_dir": "C:\\Users\\USER\\Documents\\ksef-jpk\\test_data",
     "xsd_path": "C:\\Users\\USER\\Documents\\ksef-jpk\\validator\\JPK_V7M_3.xsd",
     "xml_dir": "C:\\Users\\USER\\Documents\\JPK\\XML",

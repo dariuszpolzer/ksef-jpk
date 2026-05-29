@@ -44,7 +44,8 @@ Projekt analizuje dane z faktur KSeF, mapuje je do ewidencji VAT, wykonuje walid
 git clone ...
 cd ...
 uv sync --extra dev
-uv run python -m ksef2jpk.main --year 2026 --month 5
+uv run python -m ksef2jpk.main validate --year 2026 --month 5
+uv run python -m ksef2jpk.main build --year 2026 --month 5
 ```
 
 ---
@@ -351,9 +352,34 @@ uv sync --extra dev
 
 # Przykładowe uruchomienie
 
+Walidacja konfiguracji i źródła faktur:
+
+```powershell
+uv run python -m ksef2jpk.main validate --year 2026 --month 5
+```
+
+Generowanie JPK:
+
+```powershell
+uv run python -m ksef2jpk.main build --year 2026 --month 5
+```
+
+Stary wariant bez podkomendy nadal działa i jest równoważny `build`:
+
 ```powershell
 uv run python -m ksef2jpk.main --year 2026 --month 5
 ```
+
+Przetwarzanie konkretnego batcha z `ksef-sync`:
+
+```powershell
+uv run python -m ksef2jpk.main validate --year 2026 --month 5 --batch-dir C:\Users\USER\Documents\ksef-sync\data\batches\20260501T092813Z
+uv run python -m ksef2jpk.main build --year 2026 --month 5 --batch-dir C:\Users\USER\Documents\ksef-sync\data\batches\20260501T092813Z
+```
+
+Jeśli w konfiguracji ustawione są oba źródła, `batch_dir` ma pierwszeństwo przed
+`input_dir`. Dla pracy ręcznej najprościej ustawić `input_dir`; dla workflow z
+`ksef-sync` używać `--batch-dir`.
 
 Przykładowy wynik:
 

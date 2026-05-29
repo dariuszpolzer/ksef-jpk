@@ -3,6 +3,7 @@ import csv
 import glob
 import json
 import os
+import sys
 import traceback
 from datetime import datetime
 from pathlib import Path
@@ -18,6 +19,7 @@ from ksef2jpk.utils.dedup import get_document_dedup_key
 from ksef2jpk.utils.jpk2html import JPK2HTML
 from ksef2jpk.utils.policz_xml_w_katalogu import policz_xml_w_katalogu
 from ksef2jpk.utils.string_tools import safe_filename
+from ksef2jpk.validation import is_candidate_input_xml, validate_runtime_config
 from ksef2jpk.validator.validate_jpk import validate_jpk
 
 # ------------------------------------------------------------
@@ -34,9 +36,22 @@ def load_config(config_path: str) -> dict:
         return json.load(f)
 
 
-def parse_args():
+def configure_console_encoding() -> None:
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8")
+
+
+def parse_args(argv=None):
     parser = argparse.ArgumentParser(description="KSeF2JPK - generator JPK z faktur KSeF")
 
+    parser.add_argument(
+        "command",
+        nargs="?",
+        choices=["build", "validate"],
+        default="build",
+        help="Komenda: build generuje JPK, validate sprawdza konfigurację i źródło faktur.",
+    )
     parser.add_argument("--year", type=int, help="Rok JPK, np. 2026")
     parser.add_argument("--month", type=int, help="Miesiąc JPK, np. 4")
     parser.add_argument("--input-dir", help="Katalog z fakturami XML")
@@ -44,7 +59,22 @@ def parse_args():
     parser.add_argument("--config", help="Ścieżka do config.json")
     parser.add_argument("--no-date-filter", action="store_true", help="Wyłącz filtr daty")
 
-    return parser.parse_args()
+    return parser.parse_args(argv)
+
+
+def build_runtime_config(args):
+    config_path = os.path.abspath(args.config) if args.config else DEFAULT_CONFIG_PATH
+    config = load_config(config_path)
+
+    if args.input_dir:
+        config["input_dir"] = args.input_dir
+        config["batch_dir"] = None
+
+    if args.batch_dir:
+        config["batch_dir"] = args.batch_dir
+        config["input_dir"] = None
+
+    return config_path, config
 
 
 def resolve_input_source(config: dict):
@@ -129,32 +159,6 @@ def invoice_in_period(faktura, start_dt: datetime, end_dt: datetime) -> bool:
     if dt is None:
         return False
     return start_dt <= dt <= end_dt
-
-
-def is_candidate_input_xml(path: str) -> bool:
-    """
-    Filtruje tylko pliki, które chcemy traktować jako wejściowe faktury KSeF.
-    Odrzuca wygenerowane JPK i pomocnicze XML-e.
-    """
-    name = os.path.basename(path).lower()
-
-    excluded_prefixes = (
-        "jpk_",
-        "wynik_",
-        "output_",
-    )
-
-    excluded_exact = {
-        "wynik_test_jpk.xml",
-    }
-
-    if name in excluded_exact:
-        return False
-
-    if name.startswith(excluded_prefixes):
-        return False
-
-    return True
 
 
 def init_quality_stats() -> dict:
@@ -306,11 +310,38 @@ def write_quality_csv(output_path, parsed_records, mapped_rows):
 # ------------------------------------------------------------
 
 
-def main():
-    args = parse_args()
+def print_validation_report(report) -> None:
+    print("\nWALIDACJA KSEF2JPK")
 
-    config_path = os.path.abspath(args.config) if args.config else DEFAULT_CONFIG_PATH
-    config = load_config(config_path)
+    for item in report.info:
+        print(f"OK {item}")
+
+    for warning in report.warnings:
+        print(f"WARN {warning}")
+
+    for error in report.errors:
+        print(f"ERROR {error}")
+
+    if report.ok:
+        print("\n=== VALIDATION OK ===")
+    else:
+        print("\n=== VALIDATION FAILED ===")
+
+
+def run_validate(args) -> int:
+    _, config = build_runtime_config(args)
+    report = validate_runtime_config(config)
+    print_validation_report(report)
+    return 0 if report.ok else 2
+
+
+def run_build(args) -> int:
+    _, config = build_runtime_config(args)
+    validation_report = validate_runtime_config(config)
+    if not validation_report.ok:
+        print_validation_report(validation_report)
+        return 2
+
     xsd_path = config["xsd_path"]
     xml_dir = config["xml_dir"]
     podmiot = config["podmiot"]
@@ -318,14 +349,6 @@ def main():
 
     os.makedirs(xml_dir, exist_ok=True)
     os.makedirs(html_dir, exist_ok=True)
-
-    if args.input_dir:
-        config["input_dir"] = args.input_dir
-        config["batch_dir"] = None
-
-    if args.batch_dir:
-        config["batch_dir"] = args.batch_dir
-        config["input_dir"] = None
 
     input_dir, batch_dir, batch_manifest = resolve_input_source(config)
 
@@ -374,7 +397,7 @@ def main():
 
     if not paths:
         print(f"[ERROR] Nie znaleziono plików XML w katalogu: {input_dir}")
-        return
+        return 2
 
     quality_stats = init_quality_stats()
     quality_stats["input_xml_skipped"] = len(skipped_non_input)
@@ -498,7 +521,7 @@ def main():
 
     if not faktury:
         print("\n[ERROR] Brak poprawnie sparsowanych faktur po filtracji. Kończę.")
-        return
+        return 2
     # policz faktury wg typu
     faktury_sprzedaz = [f for f in faktury if f.meta.get("typ") == "sprzedaz"]
     faktury_zakup = [f for f in faktury if f.meta.get("typ") == "zakup"]
@@ -554,7 +577,7 @@ def main():
 
     if not wiersze:
         print("\n[ERROR] Brak poprawnie zmapowanych wierszy. Kończę.")
-        return
+        return 2
     # -----------------------------------------------------------------
     # 3. PODZIAŁ NA SPRZEDAŻ / ZAKUP
     # -----------------------------------------------------------------
@@ -586,7 +609,7 @@ def main():
     except Exception as e:
         print(f"[ERROR] Błąd podczas budowy JPK: {e}")
         traceback.print_exc()
-        return
+        return 2
 
     # -----------------------------------------------------------------
     # 5. ADAPTACJA I GENEROWANIE XML
@@ -601,7 +624,7 @@ def main():
     except Exception as e:
         print(f"[ERROR] Błąd podczas generowania XML: {e}")
         traceback.print_exc()
-        return
+        return 2
 
     # -----------------------------------------------------------------
     # 6. WALIDACJA XSD
@@ -613,6 +636,7 @@ def main():
     except Exception as e:
         print(f"[ERROR] Błąd podczas walidacji JPK: {e}")
         traceback.print_exc()
+        return 2
 
     # -----------------------------------------------------------------
     # 7. KONWERSJA DO HTML
@@ -669,7 +693,18 @@ def main():
     print("")
     print(f"Plik wynikowy:                  {output_xml}")
     print(f"Podgląd HTML zapisany jako:     {html_file}")
+    return 0
+
+
+def main(argv=None) -> int:
+    configure_console_encoding()
+    args = parse_args(argv)
+
+    if args.command == "validate":
+        return run_validate(args)
+
+    return run_build(args)
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
