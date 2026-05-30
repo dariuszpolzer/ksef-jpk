@@ -19,7 +19,11 @@ from ksef2jpk.utils.dedup import get_document_dedup_key
 from ksef2jpk.utils.jpk2html import JPK2HTML
 from ksef2jpk.utils.policz_xml_w_katalogu import policz_xml_w_katalogu
 from ksef2jpk.utils.string_tools import safe_filename
-from ksef2jpk.validation import is_candidate_input_xml, validate_runtime_config
+from ksef2jpk.validation import (
+    build_skipped_invoice_report,
+    is_candidate_input_xml,
+    validate_runtime_config,
+)
 from ksef2jpk.validator.validate_jpk import validate_jpk
 
 # ------------------------------------------------------------
@@ -389,6 +393,7 @@ def run_build(args) -> int:
     all_paths = sorted(glob.glob(os.path.join(input_dir, "*.xml")))
     paths = [p for p in all_paths if is_candidate_input_xml(p)]
     skipped_non_input = [p for p in all_paths if not is_candidate_input_xml(p)]
+    skipped_invoice_report = build_skipped_invoice_report(skipped_non_input)
 
     if batch_manifest:
         manifest_count = batch_manifest.get("batch", {}).get("invoice_count")
@@ -401,6 +406,14 @@ def run_build(args) -> int:
 
     quality_stats = init_quality_stats()
     quality_stats["input_xml_skipped"] = len(skipped_non_input)
+
+    if skipped_invoice_report:
+        report_path = Path(xml_dir) / f"skipped_invoices_{jpk_miesiac:02d}_{jpk_rok}.json"
+        report_path.write_text(
+            json.dumps(skipped_invoice_report, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        print(f"[INFO] Raport pominiętych XML: {report_path}")
 
     period_start, period_end = get_period_bounds(jpk_rok, jpk_miesiac)
 

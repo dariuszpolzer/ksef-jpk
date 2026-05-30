@@ -3,6 +3,7 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from ksef2jpk.utils.invoice_xml import classify_ksef_invoice_xml
 from ksef2jpk.utils.batch_loader import get_invoices_dir, resolve_batch_dir
 
 
@@ -33,7 +34,29 @@ def is_candidate_input_xml(path: str | Path) -> bool:
     if name in excluded_exact:
         return False
 
-    return not name.startswith(excluded_prefixes)
+    if name.startswith(excluded_prefixes):
+        return False
+
+    return classify_ksef_invoice_xml(path)["ok"]
+
+
+def build_skipped_invoice_report(paths: list[str | Path]) -> list[dict]:
+    skipped = []
+    for path in paths:
+        path = Path(path)
+        name = path.name.lower()
+        reason = ""
+
+        if name in {"wynik_test_jpk.xml"}:
+            reason = "excluded output XML filename"
+        elif name.startswith(("jpk_", "wynik_", "output_")):
+            reason = "excluded output XML prefix"
+        else:
+            reason = classify_ksef_invoice_xml(path)["reason"]
+
+        skipped.append({"filename": path.name, "path": str(path), "reason": reason})
+
+    return skipped
 
 
 def validate_config(config: dict) -> ValidationReport:
@@ -94,7 +117,12 @@ def validate_input_source(config: dict) -> ValidationReport:
 
         all_xml = sorted(glob.glob(str(invoices_dir / "*.xml")))
         input_xml = [path for path in all_xml if is_candidate_input_xml(path)]
+        skipped_xml = [path for path in all_xml if not is_candidate_input_xml(path)]
         report.info.append(f"Plików XML wejściowych: {len(input_xml)}")
+        report.info.append(f"Plików XML pominiętych: {len(skipped_xml)}")
+
+        for item in build_skipped_invoice_report(skipped_xml):
+            report.warnings.append(f"Pominięto XML {item['filename']}: {item['reason']}")
 
         if not input_xml:
             report.errors.append(f"Brak wejściowych faktur XML w katalogu: {invoices_dir}")
