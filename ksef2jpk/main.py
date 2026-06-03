@@ -30,6 +30,7 @@ from ksef2jpk.validator.validate_jpk import validate_jpk
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_CONFIG_PATH = os.path.abspath(os.path.join(BASE_DIR, "..", "config.json"))
+TAX_RUNTIME_DIR = Path(os.getenv("TAX_RUNTIME_DIR", str(Path.home() / "Documents" / "tax-runtime")))
 
 
 def load_config(config_path: str) -> dict:
@@ -69,6 +70,12 @@ def parse_args(argv=None):
 def build_runtime_config(args):
     config_path = os.path.abspath(args.config) if args.config else DEFAULT_CONFIG_PATH
     config = load_config(config_path)
+
+    if os.getenv("KSEF_JPK_XML_DIR"):
+        config["xml_dir"] = os.getenv("KSEF_JPK_XML_DIR")
+
+    if os.getenv("KSEF_JPK_HTML_DIR"):
+        config["html_dir"] = os.getenv("KSEF_JPK_HTML_DIR")
 
     if args.input_dir:
         config["input_dir"] = args.input_dir
@@ -580,7 +587,8 @@ def run_build(args) -> int:
         for doc, err in map_errors:
             print(f"- {doc}: {err}")
 
-    quality_csv_path = Path.home() / "Documents" / "JPK" / "REPORTS" / f"quality_report_{jpk_miesiac:02d}_{jpk_rok}.csv"
+    quality_reports_dir = Path(os.getenv("KSEF_JPK_REPORTS_DIR", str(TAX_RUNTIME_DIR / "ksef-jpk" / "reports")))
+    quality_csv_path = quality_reports_dir / f"quality_report_{jpk_miesiac:02d}_{jpk_rok}.csv"
 
     write_quality_csv(
         quality_csv_path,
