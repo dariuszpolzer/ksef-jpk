@@ -3,7 +3,7 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from ksef2jpk.utils.batch_loader import get_invoices_dir, resolve_batch_dir
+from ksef2jpk.utils.batch_loader import get_invoices_dir, resolve_batch_dir, validate_batch_manifest_contract
 from ksef2jpk.utils.invoice_xml import classify_ksef_invoice_xml
 
 
@@ -104,6 +104,7 @@ def validate_input_source(config: dict) -> ValidationReport:
             else:
                 with manifest_path.open(encoding="utf-8") as f:
                     manifest = json.load(f)
+                report.warnings.extend(validate_batch_manifest_contract(manifest))
                 invoice_count = manifest.get("batch", {}).get("invoice_count")
                 if invoice_count is not None:
                     report.info.append(f"Faktur w manifeście: {invoice_count}")
