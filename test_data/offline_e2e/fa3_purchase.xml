@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Faktura xmlns="http://crd.gov.pl/wzor/2025/06/25/13775/">
+  <Podmiot1>
+    <DaneIdentyfikacyjne>
+      <NIP>1234563218</NIP>
+      <Nazwa>Offline Vendor</Nazwa>
+    </DaneIdentyfikacyjne>
+    <Adres>
+      <KodKraju>PL</KodKraju>
+    </Adres>
+  </Podmiot1>
+  <Podmiot2>
+    <DaneIdentyfikacyjne>
+      <NIP>6791444505</NIP>
+      <Nazwa>Offline Buyer Own Company</Nazwa>
+    </DaneIdentyfikacyjne>
+    <Adres>
+      <KodKraju>PL</KodKraju>
+    </Adres>
+  </Podmiot2>
+  <Fa>
+    <P_1>2026-04-02</P_1>
+    <P_2>OFF/PURCHASE/1/2026</P_2>
+    <P_6>2026-04-02</P_6>
+    <P_13_1>200</P_13_1>
+    <P_14_1>46</P_14_1>
+    <P_15>246</P_15>
+    <RodzajFaktury>VAT</RodzajFaktury>
+    <FaWiersz>
+      <P_7>Offline cost</P_7>
+      <P_11>200</P_11>
+      <P_12>23</P_12>
+    </FaWiersz>
+  </Fa>
+</Faktura>
