@@ -3,8 +3,8 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from ksef2jpk.utils.invoice_xml import classify_ksef_invoice_xml
 from ksef2jpk.utils.batch_loader import get_invoices_dir, resolve_batch_dir
+from ksef2jpk.utils.invoice_xml import classify_ksef_invoice_xml
 
 
 @dataclass
